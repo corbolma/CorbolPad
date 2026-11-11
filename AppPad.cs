@@ -310,6 +310,31 @@ namespace AppPad
             using (var f = new AboutForm(icon)) f.ShowDialog(owner);
         }
 
+        // Le immagini in apppad.ico sono PNG: si legge direttamente quella della misura voluta
+        // (Icon.ToBitmap non decodifica bene le voci PNG e dà un'immagine di rumore), come in AppIP
+        static Image IconImage(int px)
+        {
+            try
+            {
+                using (var st = typeof(AboutForm).Assembly.GetManifestResourceStream("AppPad.apppad.ico"))
+                using (var ms = new MemoryStream())
+                {
+                    st.CopyTo(ms);
+                    byte[] d = ms.ToArray();
+                    int n = BitConverter.ToUInt16(d, 4);
+                    for (int i = 0; i < n; i++)
+                    {
+                        int e = 6 + 16 * i;
+                        if (d[e] != px) continue;
+                        int size = BitConverter.ToInt32(d, e + 8), off = BitConverter.ToInt32(d, e + 12);
+                        using (var img = Image.FromStream(new MemoryStream(d, off, size))) return new Bitmap(img);
+                    }
+                }
+            }
+            catch { }
+            return null;
+        }
+
         AboutForm(Icon icon)
         {
             Text = L.T("Informazioni su AppPad", "About AppPad");
@@ -324,7 +349,7 @@ namespace AppPad
 
             var accent = Color.FromArgb(37, 99, 235);
             var pic = new PictureBox { Location = new Point(20, 20), Size = new Size(48, 48), SizeMode = PictureBoxSizeMode.Zoom };
-            if (icon != null) try { pic.Image = new Icon(icon, 64, 64).ToBitmap(); } catch { }
+            pic.Image = IconImage(64);
             var title = new Label { Text = "AppPad " + AppVersion.Text, AutoSize = true, Location = new Point(82, 18), Font = new Font("Segoe UI Semibold", 14f) };
             var desc = new Label
             {
@@ -333,6 +358,17 @@ namespace AppPad
                 AutoSize = true, MaximumSize = new Size(300, 0), Location = new Point(84, 50), ForeColor = Color.DimGray
             };
             var author = new Label { Text = "© 2026 " + AppVersion.Author, AutoSize = true, Location = new Point(84, 90) };
+            // Licenza e repository, come in AppIP
+            string lic = L.T("Licenza MIT", "MIT License");
+            var repo = new LinkLabel
+            {
+                Text = lic + "  ·  GitHub", AutoSize = true, Location = new Point(84, 112),
+                LinkColor = accent, ActiveLinkColor = accent, LinkBehavior = LinkBehavior.HoverUnderline
+            };
+            repo.Links.Clear();
+            repo.Links.Add(0, lic.Length, AppVersion.RepoUrl + "/blob/main/LICENSE");
+            repo.Links.Add(lic.Length + 5, 6, AppVersion.RepoUrl);
+            repo.LinkClicked += (s, e) => Util.OpenUrl((string)e.Link.LinkData);
             string sci = L.T("Editor: Scintilla di Neil Hodgson", "Editor: Scintilla by Neil Hodgson");
             var links = new LinkLabel
             {
@@ -345,12 +381,13 @@ namespace AppPad
 
             var ok = new Button { Text = "OK", Size = new Size(90, 30), DialogResult = DialogResult.OK };
             AcceptButton = CancelButton = ok;
-            Controls.AddRange(new Control[] { pic, title, desc, author, links, ok });
+            Controls.AddRange(new Control[] { pic, title, desc, author, repo, links, ok });
 
             Load += delegate
             {
                 author.Top = desc.Bottom + 14;
-                links.Top = author.Bottom + 4;
+                repo.Top = author.Bottom + 4;
+                links.Top = repo.Bottom + 4;
                 ok.Location = new Point(ClientSize.Width - 16 - ok.Width, links.Bottom + 16);
                 ClientSize = new Size(ClientSize.Width, ok.Bottom + 14);
             };
