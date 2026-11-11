@@ -1,0 +1,7 @@
+# Binari compilati: si scaricano dalle Releases
+*.exe
+dist/
+*.new
+*.pdb
+# anteprima generata da make-icon.ps1
+icon-preview.png
