@@ -6,6 +6,12 @@
   <a href="#english">English below</a>
 </p>
 
+<p align="center">
+  <a href="https://github.com/corbolma/AppPad/releases/latest"><b>⬇ Scarica l'ultima versione</b></a> ·
+  <a href="https://github.com/corbolma/AppPad/wiki">Wiki</a> ·
+  <a href="https://github.com/corbolma/AppPad/issues">Segnala un problema</a>
+</p>
+
 ---
 
 ## Italiano
@@ -47,6 +53,8 @@ Cosa fa:
   *? > Controlla aggiornamenti* controlla subito. Una copia di AppPad non installata (avviata da un'altra cartella) avvisa e basta.
 - **Disinstallazione**: Impostazioni → App → App installate → AppPad. Chiede se eliminare anche i dati (impostazioni, schede non salvate, file dell'assistente); di default li tiene.
 
+Guida completa, installazione silenziosa e domande frequenti nella [Wiki](https://github.com/corbolma/AppPad/wiki).
+
 ### Dove salva i dati
 - Impostazioni: `%APPDATA%\AppPad\settings.txt`
 - Sessione: `%LOCALAPPDATA%\AppPad\session.txt`, e il testo non salvato in `%LOCALAPPDATA%\AppPad\backup\`
@@ -87,6 +95,8 @@ AppPad non raccoglie dati. Si collega a Internet solo per:
 ## English
 
 **AppPad** is a tabbed notepad for Windows that stays fast with files of several hundred MB and restores your tabs, including unsaved text, when you open it again. No administrator rights required.
+
+Full guide and FAQ (in Italian) in the [Wiki](https://github.com/corbolma/AppPad/wiki).
 
 - **Tabs**: new (`Ctrl+N`, **+**, double-click the empty area), close (**×**, middle click, `Ctrl+W`), drag to reorder, `Ctrl+Tab`, reopen closed tab (`Ctrl+Shift+T`), tab list when they don't fit, and a context menu.
 - **Large files** are loaded in the background with progress and *Cancel*: a 300 MB file (3.3 million lines) opens in about a second and uses about 330 MB of memory.
