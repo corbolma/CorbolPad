@@ -8,7 +8,7 @@ using System.Runtime.InteropServices;
 using System.Windows.Forms;
 using Microsoft.Win32;
 
-namespace AppPad
+namespace CorbolPad
 {
     partial class MainForm : Form
     {
@@ -66,7 +66,7 @@ namespace AppPad
             startFiles = files;
             using (var g = CreateGraphics()) scale = g.DpiX / 96f;
 
-            Text = "AppPad";
+            Text = "CorbolPad";
             Icon = Util.AppIcon();
             Font = new Font("Segoe UI", 9f);
             AutoScaleMode = AutoScaleMode.None;
@@ -380,11 +380,11 @@ namespace AppPad
                     if (Updater.Auto) Updater.CheckIfDue(this);
                 }),
                 new ToolStripSeparator(),
-                Mi(L.T("Informazioni su AppPad", "About AppPad"), Keys.None, delegate { AboutForm.ShowFor(this, Icon); })
+                Mi(L.T("Informazioni su CorbolPad", "About CorbolPad"), Keys.None, delegate { AboutForm.ShowFor(this, Icon); })
             });
             miAutoUpdate.Checked = Updater.Auto;
-            miAutoUpdate.ToolTipText = L.T("Una volta al giorno controlla se c'è una versione nuova su GitHub, la scarica e la installa quando chiudi AppPad",
-                                           "Once a day checks GitHub for a new version, downloads it and installs it when you close AppPad");
+            miAutoUpdate.ToolTipText = L.T("Una volta al giorno controlla se c'è una versione nuova su GitHub, la scarica e la installa quando chiudi CorbolPad",
+                                           "Once a day checks GitHub for a new version, downloads it and installs it when you close CorbolPad");
 
             menu.Items.AddRange(new ToolStripItem[] { file, edit, search, BuildAiMenu(false), view, miEncoding, help });
             // Sempre a portata di clic, a destra della barra dei menu: apre e chiude il pannello dell'assistente
@@ -399,13 +399,13 @@ namespace AppPad
             if (Updater.Version != null)
             {
                 var upd = new ToolStripMenuItem(Updater.ReadyFile != null
-                        ? L.F("Aggiornamento pronto: AppPad {0}", "Update ready: AppPad {0}", Updater.Version)
-                        : L.F("AppPad {0} disponibile", "AppPad {0} available", Updater.Version))
+                        ? L.F("Aggiornamento pronto: CorbolPad {0}", "Update ready: CorbolPad {0}", Updater.Version)
+                        : L.F("CorbolPad {0} disponibile", "CorbolPad {0} available", Updater.Version))
                 {
                     Alignment = ToolStripItemAlignment.Right,
                     ForeColor = theme != null ? theme.Accent : SystemColors.HotTrack,
-                    ToolTipText = L.T("Installa adesso la versione nuova; altrimenti si installa da sola quando chiudi AppPad",
-                                      "Install the new version now; otherwise it installs by itself when you close AppPad")
+                    ToolTipText = L.T("Installa adesso la versione nuova; altrimenti si installa da sola quando chiudi CorbolPad",
+                                      "Install the new version now; otherwise it installs by itself when you close CorbolPad")
                 };
                 upd.Click += delegate { Updater.Offer(this); };
                 menu.Items.Add(upd);
@@ -922,7 +922,7 @@ namespace AppPad
                 if (existing != null) { last = existing; continue; }
                 if (!File.Exists(p))
                 {
-                    MessageBox.Show(this, L.F("File non trovato:\n{0}", "File not found:\n{0}", p), "AppPad", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    MessageBox.Show(this, L.F("File non trovato:\n{0}", "File not found:\n{0}", p), "CorbolPad", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                     continue;
                 }
                 var d = new Doc { Path = p };
@@ -966,7 +966,7 @@ namespace AppPad
             if (d.Dirty)
             {
                 Activate(d);
-                var r = MessageBox.Show(this, L.F("Salvare le modifiche a {0}?", "Save changes to {0}?", d.Path ?? d.Title), "AppPad",
+                var r = MessageBox.Show(this, L.F("Salvare le modifiche a {0}?", "Save changes to {0}?", d.Path ?? d.Title), "CorbolPad",
                     MessageBoxButtons.YesNoCancel, MessageBoxIcon.Question);
                 if (r == DialogResult.Cancel) return false;
                 if (r == DialogResult.Yes && !SaveDoc(d, false)) return false;
@@ -1013,19 +1013,19 @@ namespace AppPad
             try { size = new FileInfo(source).Length; }
             catch (Exception ex)
             {
-                MessageBox.Show(this, L.F("Impossibile aprire {0}:\n{1}", "Could not open {0}:\n{1}", source, ex.Message), "AppPad", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show(this, L.F("Impossibile aprire {0}:\n{1}", "Could not open {0}:\n{1}", source, ex.Message), "CorbolPad", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return false;
             }
             if (!fromBackup && size > 1024L * 1024 * 1024)
             {
                 if (MessageBox.Show(this, L.F("{0} è molto grande ({1}): aprirlo richiede molta memoria e un po' di tempo. Continuare?",
                         "{0} is very large ({1}): opening it needs a lot of memory and some time. Continue?", Path.GetFileName(source), Util.FormatBytes(size)),
-                        "AppPad", MessageBoxButtons.YesNo, MessageBoxIcon.Warning) != DialogResult.Yes) return false;
+                        "CorbolPad", MessageBoxButtons.YesNo, MessageBoxIcon.Warning) != DialogResult.Yes) return false;
             }
             var loader = loaderFactory.CreateLoader(size, size > 1536L * 1024 * 1024);
             if (loader == null)
             {
-                MessageBox.Show(this, L.T("Memoria insufficiente per aprire il file.", "Not enough memory to open the file."), "AppPad", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show(this, L.T("Memoria insufficiente per aprire il file.", "Not enough memory to open the file."), "CorbolPad", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return false;
             }
             if (d.Editor != null && d.Loaded && d.RestoreCaret < 0)
@@ -1063,7 +1063,7 @@ namespace AppPad
                 if (job.Error != null)
                 {
                     string msg = job.Error is OutOfMemoryException ? L.T("memoria insufficiente", "not enough memory") : job.Error.Message;
-                    MessageBox.Show(this, L.F("Impossibile aprire {0}:\n{1}", "Could not open {0}:\n{1}", d.Path ?? d.Title, msg), "AppPad", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    MessageBox.Show(this, L.F("Impossibile aprire {0}:\n{1}", "Could not open {0}:\n{1}", d.Path ?? d.Title, msg), "CorbolPad", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 }
                 if (ed.Length == 0 && !ed.Modified && d.RestoreCaret < 0) { RemoveDoc(d, false); return; }
             }
@@ -1167,7 +1167,7 @@ namespace AppPad
                     Cursor = Cursors.Default;
                     var r = MessageBox.Show(this, L.F("Alcuni caratteri non esistono nella codifica {0} e verrebbero sostituiti da \"?\".\n\nSalvare in UTF-8? (No = salva comunque in {0})",
                         "Some characters do not exist in the {0} encoding and would be replaced by \"?\".\n\nSave as UTF-8 instead? (No = save in {0} anyway)", TextFile.Name(enc)),
-                        "AppPad", MessageBoxButtons.YesNoCancel, MessageBoxIcon.Warning);
+                        "CorbolPad", MessageBoxButtons.YesNoCancel, MessageBoxIcon.Warning);
                     if (r == DialogResult.Cancel) return false;
                     Cursor = Cursors.WaitCursor;
                     if (r == DialogResult.Yes) { enc = Enc.Utf8; TextFile.Save(d.Editor, path, enc, false); }
@@ -1177,7 +1177,7 @@ namespace AppPad
             catch (Exception ex)
             {
                 Cursor = Cursors.Default;
-                MessageBox.Show(this, L.F("Impossibile salvare {0}:\n{1}", "Could not save {0}:\n{1}", path, ex.Message), "AppPad", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show(this, L.F("Impossibile salvare {0}:\n{1}", "Could not save {0}:\n{1}", path, ex.Message), "CorbolPad", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return false;
             }
             finally { Cursor = Cursors.Default; }
@@ -1208,10 +1208,10 @@ namespace AppPad
         {
             if (d == null || d.Path == null || d.Loading || d.Editor == null) return;
             if (d.Dirty && MessageBox.Show(this, L.F("Ricaricare {0} dal disco? Le modifiche non salvate andranno perse.",
-                    "Reload {0} from disk? Unsaved changes will be lost.", d.Title), "AppPad", MessageBoxButtons.YesNo, MessageBoxIcon.Warning) != DialogResult.Yes) return;
+                    "Reload {0} from disk? Unsaved changes will be lost.", d.Title), "CorbolPad", MessageBoxButtons.YesNo, MessageBoxIcon.Warning) != DialogResult.Yes) return;
             if (!File.Exists(d.Path))
             {
-                MessageBox.Show(this, L.F("File non trovato:\n{0}", "File not found:\n{0}", d.Path), "AppPad", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MessageBox.Show(this, L.F("File non trovato:\n{0}", "File not found:\n{0}", d.Path), "CorbolPad", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
             StartLoad(d, d.Path, enc, false);
@@ -1234,11 +1234,11 @@ namespace AppPad
                     d.FileSize = fi.Length;
                     Activate(d);
                     string q = d.Dirty
-                        ? L.F("{0}\n\nIl file è stato modificato da un altro programma. Ricaricarlo e perdere le modifiche fatte in AppPad?",
-                              "{0}\n\nThe file was changed by another program. Reload it and lose the changes made in AppPad?", d.Path)
+                        ? L.F("{0}\n\nIl file è stato modificato da un altro programma. Ricaricarlo e perdere le modifiche fatte in CorbolPad?",
+                              "{0}\n\nThe file was changed by another program. Reload it and lose the changes made in CorbolPad?", d.Path)
                         : L.F("{0}\n\nIl file è stato modificato da un altro programma. Ricaricarlo?",
                               "{0}\n\nThe file was changed by another program. Reload it?", d.Path);
-                    if (MessageBox.Show(this, q, "AppPad", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes)
+                    if (MessageBox.Show(this, q, "CorbolPad", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes)
                         StartLoad(d, d.Path, null, false);
                 }
             }
@@ -1393,7 +1393,7 @@ namespace AppPad
         void UpdateTitle()
         {
             var d = active;
-            Text = d == null ? "AppPad" : (d.Dirty ? "*" : "") + d.Title + " - AppPad";
+            Text = d == null ? "CorbolPad" : (d.Dirty ? "*" : "") + d.Title + " - CorbolPad";
         }
 
         void UpdateStatus()
@@ -1516,7 +1516,7 @@ namespace AppPad
                 {
                     if (MessageBox.Show(this, L.F("Non è stato possibile salvare la sessione:\n{0}\n\nChiudere comunque? Le modifiche non salvate andranno perse.",
                             "Could not save the session:\n{0}\n\nClose anyway? Unsaved changes will be lost.", err),
-                            "AppPad", MessageBoxButtons.YesNo, MessageBoxIcon.Warning) != DialogResult.Yes) { e.Cancel = true; return; }
+                            "CorbolPad", MessageBoxButtons.YesNo, MessageBoxIcon.Warning) != DialogResult.Yes) { e.Cancel = true; return; }
                 }
             }
             else
@@ -1526,7 +1526,7 @@ namespace AppPad
                 {
                     if (!d.Loaded || !d.Dirty) continue;
                     Activate(d);
-                    var r = MessageBox.Show(this, L.F("Salvare le modifiche a {0}?", "Save changes to {0}?", d.Path ?? d.Title), "AppPad",
+                    var r = MessageBox.Show(this, L.F("Salvare le modifiche a {0}?", "Save changes to {0}?", d.Path ?? d.Title), "CorbolPad",
                         MessageBoxButtons.YesNoCancel, MessageBoxIcon.Question);
                     if (r == DialogResult.Cancel || (r == DialogResult.Yes && !SaveDoc(d, false))) { e.Cancel = true; return; }
                 }

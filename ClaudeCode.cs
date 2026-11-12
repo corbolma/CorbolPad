@@ -1,6 +1,6 @@
 // Assistente tramite Claude Code installato sul PC, con l'abbonamento Claude dell'utente (niente chiave API).
 // Solo per uso personale: l'abbonamento è dell'utente che ha fatto il login in Claude Code.
-// AppPad avvia "claude -p" senza strumenti (non può leggere file né eseguire comandi), senza server MCP e
+// CorbolPad avvia "claude -p" senza strumenti (non può leggere file né eseguire comandi), senza server MCP e
 // senza salvare la sessione, in una cartella vuota; manda il testo su stdin e legge la risposta in streaming
 // (--output-format stream-json: gli stessi eventi dell'API di Anthropic).
 // Compatibile con il compilatore csc di .NET Framework 4.x (C# 5).
@@ -13,7 +13,7 @@ using System.Text;
 using System.Threading;
 using System.Web.Script.Serialization;
 
-namespace AppPad
+namespace CorbolPad
 {
     class ClaudeCodeProvider : IAiProvider
     {
@@ -98,8 +98,8 @@ namespace AppPad
                 res.Error = L.T("Claude Code non è installato su questo PC (comando claude non trovato).", "Claude Code is not installed on this PC (claude command not found).");
                 return res;
             }
-            // Cartella vuota tutta per AppPad: niente CLAUDE.md o impostazioni di progetto di altre cartelle
-            string dir = Path.Combine(Path.GetTempPath(), "AppPad-claudecode");
+            // Cartella vuota tutta per CorbolPad: niente CLAUDE.md o impostazioni di progetto di altre cartelle
+            string dir = Path.Combine(Path.GetTempPath(), "CorbolPad-claudecode");
             string sysFile = Path.Combine(dir, "system-" + Guid.NewGuid().ToString("N") + ".txt");
             var err = new StringBuilder();
             Process p = null;
@@ -123,7 +123,7 @@ namespace AppPad
                     StandardOutputEncoding = Encoding.UTF8,
                     StandardErrorEncoding = Encoding.UTF8
                 };
-                // se AppPad è stato avviato da una sessione di Claude Code, quella nuova deve essere indipendente
+                // se CorbolPad è stato avviato da una sessione di Claude Code, quella nuova deve essere indipendente
                 psi.EnvironmentVariables.Remove("CLAUDECODE");
                 psi.EnvironmentVariables.Remove("CLAUDE_CODE_ENTRYPOINT");
                 p = Process.Start(psi);

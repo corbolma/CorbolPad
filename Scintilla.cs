@@ -1,5 +1,5 @@
 // Controllo editor basato su Scintilla (https://www.scintilla.org), lo stesso motore di Notepad++.
-// Scintilla.dll è incorporata nell'exe: al primo avvio viene estratta in %LOCALAPPDATA%\AppPad\bin\<hash>\.
+// Scintilla.dll è incorporata nell'exe: al primo avvio viene estratta in %LOCALAPPDATA%\CorbolPad\bin\<hash>\.
 // Si comanda con messaggi SCI_* chiamati tramite la "funzione diretta" (più veloce di SendMessage).
 using System;
 using System.ComponentModel;
@@ -9,7 +9,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Windows.Forms;
 
-namespace AppPad
+namespace CorbolPad
 {
     // Costanti da Scintilla.h (versione 5.6.9)
     static class Sci
@@ -90,7 +90,7 @@ namespace AppPad
         {
             if (loaded) return;
             byte[] data;
-            using (var st = typeof(SciLib).Assembly.GetManifestResourceStream("AppPad.Scintilla.dll"))
+            using (var st = typeof(SciLib).Assembly.GetManifestResourceStream("CorbolPad.Scintilla.dll"))
             {
                 if (st == null) throw new FileNotFoundException("Scintilla.dll non incorporata nell'exe");
                 data = new byte[st.Length];
@@ -98,7 +98,7 @@ namespace AppPad
                 while (off < data.Length && (n = st.Read(data, off, data.Length - off)) > 0) off += n;
             }
             string hash = Hash(data);
-            string dir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "AppPad", "bin", hash.Substring(0, 16));
+            string dir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "CorbolPad", "bin", hash.Substring(0, 16));
             string file = Path.Combine(dir, "Scintilla.dll");
             bool ok = false;
             try { ok = File.Exists(file) && Hash(File.ReadAllBytes(file)) == hash; } catch { }

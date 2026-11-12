@@ -6,7 +6,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 
-namespace AppPad
+namespace CorbolPad
 {
     enum Enc { Utf8, Utf8Bom, Utf16LE, Utf16BE, Ansi }
 
@@ -20,7 +20,7 @@ namespace AppPad
         public LoadJob Job;             // caricamento in corso
         public bool ExtraDirty;         // modifiche non viste da Scintilla: ripristinato da backup, codifica cambiata
         public bool ChangedSinceBackup;
-        public string BackupId;         // file in %LOCALAPPDATA%\AppPad\backup
+        public string BackupId;         // file in %LOCALAPPDATA%\CorbolPad\backup
         public DateTime FileTimeUtc;
         public long FileSize = -1;
         public long RestoreCaret = -1, RestoreAnchor = -1, RestoreFirstLine = -1;
@@ -275,11 +275,11 @@ namespace AppPad
         }
     }
 
-    // Sessione: %LOCALAPPDATA%\AppPad\session.txt con una riga per scheda; il testo non salvato
-    // (file modificati e schede senza titolo) sta in %LOCALAPPDATA%\AppPad\backup\<id>.txt in UTF-8.
+    // Sessione: %LOCALAPPDATA%\CorbolPad\session.txt con una riga per scheda; il testo non salvato
+    // (file modificati e schede senza titolo) sta in %LOCALAPPDATA%\CorbolPad\backup\<id>.txt in UTF-8.
     static class Session
     {
-        public static readonly string Dir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "AppPad");
+        public static readonly string Dir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "CorbolPad");
         public static readonly string BackupDir = Path.Combine(Dir, "backup");
         static readonly string FilePath = Path.Combine(Dir, "session.txt");
 
@@ -330,7 +330,7 @@ namespace AppPad
             error = null;
             bool ok = true;
             Directory.CreateDirectory(BackupDir);
-            var sb = new StringBuilder("AppPad session 1\r\n");
+            var sb = new StringBuilder("CorbolPad session 1\r\n");
             int idx = 0, activeIdx = 0;
             foreach (var d in docs)
             {

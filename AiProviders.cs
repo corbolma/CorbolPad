@@ -3,7 +3,7 @@
 //   - Claude: API Anthropic (POST /v1/messages), con la chiave dell'utente.
 //   - Claude Code: il programma installato sul PC, con l'abbonamento dell'utente (ClaudeCode.cs).
 //   - Compatibile OpenAI: POST <url>/chat/completions. Copre OpenAI, Mistral, OpenRouter, Groq, Ollama,
-//     LM Studio e anche l'assistente locale di AppPad (llama-server espone la stessa API).
+//     LM Studio e anche l'assistente locale di CorbolPad (llama-server espone la stessa API).
 // Niente SDK (non esistono per .NET Framework/C# 5): HTTP e JSON a mano, con JavaScriptSerializer.
 using System;
 using System.Collections;
@@ -17,7 +17,7 @@ using System.Text;
 using System.Threading;
 using System.Web.Script.Serialization;
 
-namespace AppPad
+namespace CorbolPad
 {
     class AiMessage
     {
@@ -96,7 +96,7 @@ namespace AppPad
                     req.Method = "POST";
                     req.ContentType = "application/json";
                     req.Accept = "text/event-stream";
-                    req.UserAgent = "AppPad/" + AppVersion.Text;
+                    req.UserAgent = "CorbolPad/" + AppVersion.Text;
                     req.Timeout = TimeoutMs;
                     req.ReadWriteTimeout = TimeoutMs;
                     req.AllowWriteStreamBuffering = true;
@@ -339,7 +339,7 @@ namespace AppPad
     {
         public string BaseUrl = "https://api.openai.com/v1", ApiKey, Model;
         public string DisplayName;                                  // es. "Ollama"; vuoto = ricavato dall'indirizzo
-        public bool Local;                                          // l'assistente locale di AppPad
+        public bool Local;                                          // l'assistente locale di CorbolPad
         public Dictionary<string, object> Extra;                    // campi aggiuntivi del corpo (es. per llama-server)
 
         public override string Name
@@ -404,7 +404,7 @@ namespace AppPad
         {
             try { ServicePointManager.SecurityProtocol |= SecurityProtocolType.Tls12; } catch { }
             var req = (HttpWebRequest)WebRequest.Create(BaseUrl.TrimEnd('/') + "/models");
-            req.UserAgent = "AppPad/" + AppVersion.Text;
+            req.UserAgent = "CorbolPad/" + AppVersion.Text;
             req.Timeout = 15000;
             AddHeaders(req);
             WebResponse resp;
@@ -433,6 +433,7 @@ namespace AppPad
     // Chiavi API in settings.txt cifrate con DPAPI: le legge solo lo stesso utente Windows sullo stesso PC
     static class Secret
     {
+        // Non cambia con il nome dell'app (prima AppPad): con questa sono cifrate le chiavi già salvate
         static readonly byte[] Entropy = Encoding.UTF8.GetBytes("AppPad.ai.v1");
 
         public static string Protect(string plain)

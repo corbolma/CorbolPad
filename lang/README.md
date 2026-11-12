@@ -1,7 +1,7 @@
 # Translations
 
-AppPad is available in **Italian** and **English** (written in the source code).
-Any other language is a plain text file in this folder, embedded into `AppPad.exe` and the installer at build time.
+CorbolPad is available in **Italian** and **English** (written in the source code).
+Any other language is a plain text file in this folder, embedded into `CorbolPad.exe` and the installer at build time.
 No programming needed: translations are very welcome as pull requests.
 
 ## Add a language

@@ -7,7 +7,7 @@ using System.Drawing.Drawing2D;
 using System.Windows.Forms;
 using Microsoft.Win32;
 
-namespace AppPad
+namespace CorbolPad
 {
     class Theme
     {

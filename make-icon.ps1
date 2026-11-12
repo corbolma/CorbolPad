@@ -1,4 +1,4 @@
-# Genera apppad.ico (multi-risoluzione, PNG interni) e un'anteprima icon-preview.png
+# Genera corbolpad.ico (multi-risoluzione, PNG interni) e un'anteprima icon-preview.png
 # Disegno: un foglio con righe di testo e due linguette di schede in alto.
 Add-Type -AssemblyName System.Drawing
 $ErrorActionPreference = 'Stop'
@@ -97,7 +97,7 @@ for ($i = 0; $i -lt $sizes.Count; $i++) {
 }
 foreach ($d in $pngs) { $bw.Write($d) }
 $bw.Flush()
-[System.IO.File]::WriteAllBytes((Join-Path $dir 'apppad.ico'), $out.ToArray())
+[System.IO.File]::WriteAllBytes((Join-Path $dir 'corbolpad.ico'), $out.ToArray())
 
 $pw = 20; foreach ($s in $sizes) { $pw += $s + 20 }
 $prev = New-Object System.Drawing.Bitmap $pw, 620
@@ -111,4 +111,4 @@ foreach ($s in $sizes) {
     $x += $s + 20; $b.Dispose()
 }
 $prev.Save((Join-Path $dir 'icon-preview.png'), [System.Drawing.Imaging.ImageFormat]::Png)
-Write-Output "Creati apppad.ico e icon-preview.png"
+Write-Output "Creati corbolpad.ico e icon-preview.png"

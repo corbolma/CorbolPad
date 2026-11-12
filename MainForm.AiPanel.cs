@@ -10,12 +10,12 @@ using System.Text;
 using System.Threading;
 using System.Windows.Forms;
 
-namespace AppPad
+namespace CorbolPad
 {
     partial class MainForm
     {
         const string ChatSystem =
-            "You are a helpful assistant built into AppPad, a plain-text editor. Each message starts with the list of tabs open in the editor; " +
+            "You are a helpful assistant built into CorbolPad, a plain-text editor. Each message starts with the list of tabs open in the editor; " +
             "the content of the tabs you can read follows between <document name=\"...\"> and </document> (part=\"selection\" marks selected text, " +
             "truncated=\"yes\" a document that was cut). A tab too long to be read whole is given as several excerpts of the same document, " +
             "each with its line numbers: the passages that contain words of the question and the part around the cursor; or, for a general question, " +
@@ -413,7 +413,7 @@ namespace AppPad
                 try { BeginInvoke(new Action(delegate { FinishChat(job, res); })); } catch { }
             });
             th.IsBackground = true;
-            th.Name = "AppPad AI chat";
+            th.Name = "CorbolPad AI chat";
             th.Start();
             aiChatTimer.Start();
         }

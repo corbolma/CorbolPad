@@ -1,7 +1,7 @@
 // Assistente locale: scarica llama-server (llama.cpp, licenza MIT) e il modello scelto, solo quando l'utente
 // attiva l'assistente locale. Come in ZioNVR: ogni file si controlla con il suo SHA-256, un download interrotto
 // riprende da dove era arrivato, si lascia sempre spazio libero sul disco, e i file che non servono più si cancellano.
-// Tutto sta in %LOCALAPPDATA%\AppPad\ai (non in Roaming: sono GB che non vanno sincronizzati).
+// Tutto sta in %LOCALAPPDATA%\CorbolPad\ai (non in Roaming: sono GB che non vanno sincronizzati).
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -15,7 +15,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
 
-namespace AppPad
+namespace CorbolPad
 {
     class AiModel
     {
@@ -100,7 +100,7 @@ namespace AppPad
 
     class AiDownloader
     {
-        // Versione di llama.cpp provata con AppPad, fissata con dimensione e SHA-256 dei pacchetti (presi dalla
+        // Versione di llama.cpp provata con CorbolPad, fissata con dimensione e SHA-256 dei pacchetti (presi dalla
         // pagina della release su GitHub). Un aggiornamento di llama.cpp non cambia nulla finché non si cambia qui.
         // Per aggiornare: https://github.com/ggml-org/llama.cpp/releases/tag/<tag> → asset "llama-<tag>-bin-win-<cpu|vulkan>-x64.zip".
         public const string LlamaTag = "b12110";
@@ -116,12 +116,12 @@ namespace AppPad
 
         public static string Root
         {
-            get { return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "AppPad", "ai"); }
+            get { return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "CorbolPad", "ai"); }
         }
         public static string ModelsDir { get { return Path.Combine(Root, "models"); } }
         public static string LlamaDir { get { return Path.Combine(Root, "llama"); } }
 
-        static string UserAgent { get { return "AppPad/" + AppVersion.Text; } }
+        static string UserAgent { get { return "CorbolPad/" + AppVersion.Text; } }
 
         // Chiamato dal thread del download: chi aggiorna l'interfaccia deve usare BeginInvoke
         public event Action<AiDownloadStatus> Progress;
@@ -254,7 +254,7 @@ namespace AppPad
             thread = new Thread(delegate () { Run(model, variant); });
             thread.IsBackground = true;
             thread.Priority = ThreadPriority.BelowNormal;
-            thread.Name = "AppPad AI download";
+            thread.Name = "CorbolPad AI download";
             thread.Start();
         }
 

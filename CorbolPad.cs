@@ -1,4 +1,4 @@
-// AppPad - blocco note a schede, veloce anche con file di centinaia di MB, con la sessione ripristinata all'avvio.
+// CorbolPad - blocco note a schede, veloce anche con file di centinaia di MB, con la sessione ripristinata all'avvio.
 // L'editor è Scintilla (lo stesso di Notepad++). Compatibile con il compilatore csc di .NET Framework 4.x (C# 5).
 using System;
 using System.Collections.Generic;
@@ -13,27 +13,28 @@ using System.Text;
 using System.Threading;
 using System.Windows.Forms;
 
-[assembly: System.Reflection.AssemblyTitle("AppPad")]
+[assembly: System.Reflection.AssemblyTitle("CorbolPad")]
 
-namespace AppPad
+namespace CorbolPad
 {
     static class Program
     {
         [DllImport("user32.dll")] static extern bool SetProcessDPIAware();
         [DllImport("shell32.dll", CharSet = CharSet.Unicode)] static extern int SetCurrentProcessExplicitAppUserModelID(string id);
 
-        public const string AppUserModelId = "AppPad.Editor";
+        public const string AppUserModelId = "AppPad.Editor"; // come prima del cambio di nome: le icone già fissate alla barra restano della stessa app
 
-        // AppPad.exe [file...] -> apre i file; se AppPad è già aperto li passa alla finestra esistente
+        // CorbolPad.exe [file...] -> apre i file; se CorbolPad è già aperto li passa alla finestra esistente
         [STAThread]
         static void Main(string[] args)
         {
             try { SetProcessDPIAware(); } catch { }
+            OldApp.MoveLeftovers(); // dati rimasti nelle cartelle col nome vecchio (AppPad)
             try { SetCurrentProcessExplicitAppUserModelID(AppUserModelId); } catch { }
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
             Application.ThreadException += (s, e) =>
-                MessageBox.Show(L.T("Si è verificato un errore:", "An error occurred:") + "\n" + e.Exception.Message, "AppPad", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show(L.T("Si è verificato un errore:", "An error occurred:") + "\n" + e.Exception.Message, "CorbolPad", MessageBoxButtons.OK, MessageBoxIcon.Error);
 
             Settings.Load();
             L.Set(Settings.Get("lang", "auto"));
@@ -47,14 +48,14 @@ namespace AppPad
             }
 
             bool primary;
-            var mutex = new Mutex(true, "AppPad.Instance." + Environment.UserName, out primary);
+            var mutex = new Mutex(true, "CorbolPad.Instance." + Environment.UserName, out primary);
             if (!primary && SingleInstance.Send(files)) return;
 
             try { SciLib.Load(); }
             catch (Exception ex)
             {
                 MessageBox.Show(L.T("Impossibile avviare l'editor (Scintilla.dll):", "Could not start the editor (Scintilla.dll):") + "\n" + ex.Message,
-                    "AppPad", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    "CorbolPad", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return;
             }
             Application.Run(new MainForm(files, primary));
@@ -67,7 +68,7 @@ namespace AppPad
     {
         [DllImport("user32.dll")] static extern bool AllowSetForegroundWindow(int pid);
 
-        static string PipeName { get { return "AppPad-" + Environment.UserName + "-" + Process.GetCurrentProcess().SessionId; } }
+        static string PipeName { get { return "CorbolPad-" + Environment.UserName + "-" + Process.GetCurrentProcess().SessionId; } }
 
         public static bool Send(List<string> files)
         {
@@ -142,7 +143,7 @@ namespace AppPad
         {
             try
             {
-                using (var st = typeof(Util).Assembly.GetManifestResourceStream("AppPad.apppad.ico"))
+                using (var st = typeof(Util).Assembly.GetManifestResourceStream("CorbolPad.corbolpad.ico"))
                     if (st != null) return new Icon(st);
             }
             catch { }
@@ -150,10 +151,10 @@ namespace AppPad
         }
     }
 
-    // Impostazioni in %APPDATA%\AppPad\settings.txt, righe "chiave=valore".
+    // Impostazioni in %APPDATA%\CorbolPad\settings.txt, righe "chiave=valore".
     static class Settings
     {
-        static readonly string Path_ = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "AppPad", "settings.txt");
+        static readonly string Path_ = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "CorbolPad", "settings.txt");
         static readonly Dictionary<string, string> values = new Dictionary<string, string>();
 
         public static void Load()
@@ -310,13 +311,13 @@ namespace AppPad
             using (var f = new AboutForm(icon)) f.ShowDialog(owner);
         }
 
-        // Le immagini in apppad.ico sono PNG: si legge direttamente quella della misura voluta
-        // (Icon.ToBitmap non decodifica bene le voci PNG e dà un'immagine di rumore), come in AppIP
+        // Le immagini in corbolpad.ico sono PNG: si legge direttamente quella della misura voluta
+        // (Icon.ToBitmap non decodifica bene le voci PNG e dà un'immagine di rumore), come in CorbolIp
         static Image IconImage(int px)
         {
             try
             {
-                using (var st = typeof(AboutForm).Assembly.GetManifestResourceStream("AppPad.apppad.ico"))
+                using (var st = typeof(AboutForm).Assembly.GetManifestResourceStream("CorbolPad.corbolpad.ico"))
                 using (var ms = new MemoryStream())
                 {
                     st.CopyTo(ms);
@@ -337,7 +338,7 @@ namespace AppPad
 
         AboutForm(Icon icon)
         {
-            Text = L.T("Informazioni su AppPad", "About AppPad");
+            Text = L.T("Informazioni su CorbolPad", "About CorbolPad");
             FormBorderStyle = FormBorderStyle.FixedDialog;
             MaximizeBox = MinimizeBox = false; ShowInTaskbar = false;
             StartPosition = FormStartPosition.CenterParent;
@@ -350,7 +351,7 @@ namespace AppPad
             var accent = Color.FromArgb(37, 99, 235);
             var pic = new PictureBox { Location = new Point(20, 20), Size = new Size(48, 48), SizeMode = PictureBoxSizeMode.Zoom };
             pic.Image = IconImage(64);
-            var title = new Label { Text = "AppPad " + AppVersion.Text, AutoSize = true, Location = new Point(82, 18), Font = new Font("Segoe UI Semibold", 14f) };
+            var title = new Label { Text = "CorbolPad " + AppVersion.Text, AutoSize = true, Location = new Point(82, 18), Font = new Font("Segoe UI Semibold", 14f) };
             var desc = new Label
             {
                 Text = L.T("Blocco note a schede, veloce anche con file di grandi dimensioni",
@@ -358,7 +359,7 @@ namespace AppPad
                 AutoSize = true, MaximumSize = new Size(300, 0), Location = new Point(84, 50), ForeColor = Color.DimGray
             };
             var author = new Label { Text = "© 2026 " + AppVersion.Author, AutoSize = true, Location = new Point(84, 90) };
-            // Licenza e repository, come in AppIP
+            // Licenza e repository, come in CorbolIp
             string lic = L.T("Licenza MIT", "MIT License");
             var repo = new LinkLabel
             {

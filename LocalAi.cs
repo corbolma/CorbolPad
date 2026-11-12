@@ -3,7 +3,7 @@
 //   - Si avvia alla prima richiesta e si chiude dopo 5 minuti senza richieste (libera 2-4 GB di RAM).
 //   - Ascolta solo su 127.0.0.1, su una porta libera scelta ogni volta, con una chiave casuale:
 //     gli altri programmi del PC non possono usarlo.
-//   - Un "job object" di Windows lo chiude anche se AppPad si chiude male.
+//   - Un "job object" di Windows lo chiude anche se CorbolPad si chiude male.
 //   - Due chiusure improvvise durante una risposta e l'assistente locale si spegne (si riattiva dalle impostazioni).
 using System;
 using System.Collections.Generic;
@@ -17,7 +17,7 @@ using System.Text;
 using System.Threading;
 using System.Web.Script.Serialization;
 
-namespace AppPad
+namespace CorbolPad
 {
     class LocalAi : IAiProvider
     {
@@ -362,8 +362,8 @@ namespace AppPad
             return BitConverter.ToString(b).Replace("-", "").ToLowerInvariant();
         }
 
-        // Job object con "chiudi i processi quando si chiude il job": l'handle lo tiene AppPad, quindi
-        // se AppPad termina (anche in crash) Windows chiude llama-server
+        // Job object con "chiudi i processi quando si chiude il job": l'handle lo tiene CorbolPad, quindi
+        // se CorbolPad termina (anche in crash) Windows chiude llama-server
         [StructLayout(LayoutKind.Sequential)]
         struct JOBOBJECT_BASIC_LIMIT_INFORMATION
         {

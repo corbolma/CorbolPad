@@ -1,7 +1,7 @@
-// Installer di AppPad: un solo exe che contiene AppPad.exe.
-// Installa per l'utente corrente (nessun permesso di amministratore) in %LOCALAPPDATA%\Programs\AppPad.
-//   AppPad-Setup.exe              -> finestra di installazione / aggiornamento
-//   AppPad-Setup.exe /silent      -> installazione silenziosa (mantiene le scelte di un'installazione precedente)
+// Installer di CorbolPad: un solo exe che contiene CorbolPad.exe.
+// Installa per l'utente corrente (nessun permesso di amministratore) in %LOCALAPPDATA%\Programs\CorbolPad.
+//   CorbolPad-Setup.exe              -> finestra di installazione / aggiornamento
+//   CorbolPad-Setup.exe /silent      -> installazione silenziosa (mantiene le scelte di un'installazione precedente)
 //   Uninstall.exe /uninstall      -> disinstallazione (registrata in Impostazioni > App)
 //   Uninstall.exe /uninstall /silent [/purge] -> senza domande; /purge cancella anche impostazioni, sessione e assistente
 using System;
@@ -15,9 +15,9 @@ using System.Threading;
 using System.Windows.Forms;
 using Microsoft.Win32;
 
-[assembly: AssemblyTitle("Installazione AppPad")]
+[assembly: AssemblyTitle("Installazione CorbolPad")]
 
-namespace AppPad.Setup
+namespace CorbolPad.Setup
 {
     static class Program
     {
@@ -45,7 +45,7 @@ namespace AppPad.Setup
             }
             catch (Exception ex)
             {
-                if (!silent) MessageBox.Show(L.T("Errore", "Error") + ": " + ex.Message, "AppPad", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                if (!silent) MessageBox.Show(L.T("Errore", "Error") + ": " + ex.Message, "CorbolPad", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return 2;
             }
         }
@@ -53,21 +53,21 @@ namespace AppPad.Setup
 
     static class Installer
     {
-        const string UninstKey = @"Software\Microsoft\Windows\CurrentVersion\Uninstall\AppPad";
-        const string ProgId = "AppPad.Document";
+        const string UninstKey = @"Software\Microsoft\Windows\CurrentVersion\Uninstall\CorbolPad";
+        const string ProgId = "AppPad.Document"; // come prima del cambio di nome: resta valida l'app predefinita scelta dall'utente
 
         public static readonly string InstallDir = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Programs", "AppPad");
-        public static readonly string ExePath = Path.Combine(InstallDir, "AppPad.exe");
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Programs", "CorbolPad");
+        public static readonly string ExePath = Path.Combine(InstallDir, "CorbolPad.exe");
         public static readonly string UninstallerPath = Path.Combine(InstallDir, "Uninstall.exe");
-        static readonly string StartMenuLnk = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Programs), "AppPad.lnk");
-        static readonly string DesktopLnk = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory), "AppPad.lnk");
+        static readonly string StartMenuLnk = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Programs), "CorbolPad.lnk");
+        static readonly string DesktopLnk = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory), "CorbolPad.lnk");
 
         // Dati dell'app: impostazioni (roaming) e sessione, testo non salvato, Scintilla, assistente locale
-        public static readonly string SettingsDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "AppPad");
-        public static readonly string LocalDataDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "AppPad");
+        public static readonly string SettingsDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "CorbolPad");
+        public static readonly string LocalDataDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "CorbolPad");
 
-        // Estensioni per cui AppPad compare in "Apri con" e in Impostazioni > App predefinite
+        // Estensioni per cui CorbolPad compare in "Apri con" e in Impostazioni > App predefinite
         static readonly string[] TextTypes =
         {
             ".txt", ".log", ".md", ".markdown", ".ini", ".cfg", ".conf", ".config", ".properties", ".toml", ".env",
@@ -81,7 +81,7 @@ namespace AppPad.Setup
         // Versione realmente installata: letta dall'exe (non solo dal registro), null se non installata.
         public static Version InstalledVersion()
         {
-            if (!File.Exists(ExePath)) return null;
+            if (!File.Exists(ExePath)) return OldApp.InstalledVersion(); // installato col nome vecchio, o null
             try
             {
                 var fv = FileVersionInfo.GetVersionInfo(ExePath);
@@ -99,22 +99,25 @@ namespace AppPad.Setup
 
         public static string V(Version v) { return v.Major + "." + v.Minor + "." + Math.Max(0, v.Build); }
 
-        public static bool DesktopShortcutExists() { return File.Exists(DesktopLnk); }
+        public static bool DesktopShortcutExists() { return File.Exists(DesktopLnk) || (!File.Exists(ExePath) && File.Exists(OldApp.DesktopLnk)); }
 
         // Scelte salvate nella chiave di disinstallazione: attive di default, in un aggiornamento si mantengono
         static bool Choice(string name)
         {
             using (var k = Registry.CurrentUser.OpenSubKey(UninstKey))
-                return k == null || !(k.GetValue(name) is int) || (int)k.GetValue(name) != 0;
+            {
+                if (k == null) { var old = OldApp.Choice(name); return old == null || old.Value != 0; } // anche dal nome vecchio
+                return !(k.GetValue(name) is int) || (int)k.GetValue(name) != 0;
+            }
         }
         public static bool ContextMenuEnabled() { return Choice("ContextMenu"); }
         public static bool FileTypesEnabled() { return Choice("FileTypes"); }
 
         // ---------- Esplora file (solo per l'utente corrente, nessun amministratore) ----------
 
-        const string ContextKey = @"Software\Classes\*\shell\AppPad";            // tasto destro su qualunque file
-        const string AppKey = @"Software\Classes\Applications\AppPad.exe";       // "Apri con"
-        const string CapKey = @"Software\AppPad\Capabilities";                   // Impostazioni > App predefinite
+        const string ContextKey = @"Software\Classes\*\shell\CorbolPad";            // tasto destro su qualunque file
+        const string AppKey = @"Software\Classes\Applications\CorbolPad.exe";       // "Apri con"
+        const string CapKey = @"Software\CorbolPad\Capabilities";                   // Impostazioni > App predefinite
         const string RegAppsKey = @"Software\RegisteredApplications";
 
         [DllImport("shell32.dll")] static extern void SHChangeNotify(int eventId, int flags, IntPtr item1, IntPtr item2);
@@ -126,7 +129,7 @@ namespace AppPad.Setup
         {
             using (var k = Registry.CurrentUser.CreateSubKey(ContextKey))
             {
-                k.SetValue("", L.T("Apri con AppPad", "Open with AppPad"));
+                k.SetValue("", L.T("Apri con CorbolPad", "Open with CorbolPad"));
                 k.SetValue("Icon", "\"" + ExePath + "\",0");
                 using (var c = k.CreateSubKey("command")) c.SetValue("", OpenCommand);
             }
@@ -139,17 +142,17 @@ namespace AppPad.Setup
 
         static void RegisterFileTypes()
         {
-            // Il tipo di documento di AppPad
+            // Il tipo di documento di CorbolPad
             using (var k = Registry.CurrentUser.CreateSubKey(@"Software\Classes\" + ProgId))
             {
                 k.SetValue("", L.T("Documento di testo", "Text document"));
                 using (var i = k.CreateSubKey("DefaultIcon")) i.SetValue("", "\"" + ExePath + "\",0");
                 using (var c = k.CreateSubKey(@"shell\open\command")) c.SetValue("", OpenCommand);
             }
-            // "Apri con": AppPad tra i programmi proposti per queste estensioni (non cambia il programma predefinito)
+            // "Apri con": CorbolPad tra i programmi proposti per queste estensioni (non cambia il programma predefinito)
             using (var k = Registry.CurrentUser.CreateSubKey(AppKey))
             {
-                k.SetValue("FriendlyAppName", "AppPad");
+                k.SetValue("FriendlyAppName", "CorbolPad");
                 using (var c = k.CreateSubKey(@"shell\open\command")) c.SetValue("", OpenCommand);
                 using (var t = k.CreateSubKey("SupportedTypes"))
                     foreach (var ext in TextTypes) t.SetValue(ext, "");
@@ -157,17 +160,17 @@ namespace AppPad.Setup
             foreach (var ext in TextTypes)
                 using (var k = Registry.CurrentUser.CreateSubKey(@"Software\Classes\" + ext + @"\OpenWithProgids"))
                     k.SetValue(ProgId, new byte[0], RegistryValueKind.None);
-            // Impostazioni > App > App predefinite > AppPad
+            // Impostazioni > App > App predefinite > CorbolPad
             using (var k = Registry.CurrentUser.CreateSubKey(CapKey))
             {
-                k.SetValue("ApplicationName", "AppPad");
+                k.SetValue("ApplicationName", "CorbolPad");
                 k.SetValue("ApplicationDescription", L.T("Blocco note a schede, veloce anche con file di grandi dimensioni", "Tabbed notepad, fast even with large files"));
                 k.SetValue("ApplicationIcon", "\"" + ExePath + "\",0");
                 using (var f = k.CreateSubKey("FileAssociations"))
                     foreach (var ext in TextTypes) f.SetValue(ext, ProgId);
             }
             using (var k = Registry.CurrentUser.CreateSubKey(RegAppsKey))
-                k.SetValue("AppPad", CapKey);
+                k.SetValue("CorbolPad", CapKey);
         }
 
         static void UnregisterFileTypes()
@@ -181,21 +184,22 @@ namespace AppPad.Setup
                 catch { }
             try { Registry.CurrentUser.DeleteSubKeyTree(@"Software\Classes\" + ProgId, false); } catch { }
             try { Registry.CurrentUser.DeleteSubKeyTree(AppKey, false); } catch { }
-            try { Registry.CurrentUser.DeleteSubKeyTree(@"Software\AppPad", false); } catch { }
+            try { Registry.CurrentUser.DeleteSubKeyTree(@"Software\CorbolPad", false); } catch { }
             try
             {
                 using (var k = Registry.CurrentUser.OpenSubKey(RegAppsKey, true))
-                    if (k != null) k.DeleteValue("AppPad", false);
+                    if (k != null) k.DeleteValue("CorbolPad", false);
             }
             catch { }
         }
 
-        // Chiude AppPad se è aperta: prima con garbo (chiusura della finestra: la sessione e il testo non salvato
-        // vengono conservati, senza domande), poi forzando. Con AppPad si chiude anche l'assistente locale.
+        // Chiude CorbolPad se è aperta: prima con garbo (chiusura della finestra: la sessione e il testo non salvato
+        // vengono conservati, senza domande), poi forzando. Con CorbolPad si chiude anche l'assistente locale.
         public static void CloseRunning()
         {
+            OldApp.CloseRunning(null); // la versione col nome vecchio (salva la sessione chiudendosi)
             int session = Process.GetCurrentProcess().SessionId;
-            Func<Process[]> mine = () => Process.GetProcessesByName("AppPad").Where(p => p.SessionId == session).ToArray();
+            Func<Process[]> mine = () => Process.GetProcessesByName("CorbolPad").Where(p => p.SessionId == session).ToArray();
             if (mine().Length > 0)
             {
                 foreach (var p in mine())
@@ -205,12 +209,13 @@ namespace AppPad.Setup
                 foreach (var p in mine())
                     try { p.Kill(); p.WaitForExit(3000); } catch { }
             }
-            // llama-server dell'assistente locale rimasto in vita (normalmente si chiude con AppPad)
-            string ai = Path.Combine(LocalDataDir, "ai");
+            // llama-server dell'assistente locale rimasto in vita (normalmente si chiude con CorbolPad)
+            string ai = Path.Combine(LocalDataDir, "ai"), oldAi = Path.Combine(OldApp.LocalDir, "ai");
             foreach (var p in Process.GetProcessesByName("llama-server").Where(p => p.SessionId == session))
                 try
                 {
-                    if (p.MainModule.FileName.StartsWith(ai, StringComparison.OrdinalIgnoreCase)) { p.Kill(); p.WaitForExit(3000); }
+                    string exe = p.MainModule.FileName;
+                    if (exe.StartsWith(ai, StringComparison.OrdinalIgnoreCase) || exe.StartsWith(oldAi, StringComparison.OrdinalIgnoreCase)) { p.Kill(); p.WaitForExit(3000); }
                 }
                 catch { }
         }
@@ -218,17 +223,24 @@ namespace AppPad.Setup
         public static bool IsRunning()
         {
             int session = Process.GetCurrentProcess().SessionId;
-            return Process.GetProcessesByName("AppPad").Any(p => p.SessionId == session);
+            return Process.GetProcessesByName("CorbolPad").Concat(Process.GetProcessesByName(OldApp.Name)).Any(p => p.SessionId == session);
         }
 
         public static void Install(bool desktop, bool contextMenu, bool fileTypes, bool launch)
         {
             CloseRunning();
+            // Dal nome vecchio: dati nelle cartelle nuove (sessione e testo non salvato compresi), vecchia installazione
+            // tolta (le scelte sono già state lette)
+            OldApp.MoveData();
+            OldApp.RemoveInstall();
+            try { Registry.CurrentUser.DeleteSubKeyTree(@"Software\Classes\*\shell\" + OldApp.Name, false); } catch { }
+            try { Registry.CurrentUser.DeleteSubKeyTree(@"Software\" + OldApp.Name, false); } catch { }
+            try { using (var k = Registry.CurrentUser.OpenSubKey(RegAppsKey, true)) if (k != null) k.DeleteValue(OldApp.Name, false); } catch { }
             Directory.CreateDirectory(InstallDir);
 
-            using (var src = Assembly.GetExecutingAssembly().GetManifestResourceStream("AppPad.payload"))
+            using (var src = Assembly.GetExecutingAssembly().GetManifestResourceStream("CorbolPad.payload"))
             {
-                if (src == null) throw new InvalidOperationException("pacchetto AppPad.exe mancante nell'installer");
+                if (src == null) throw new InvalidOperationException("pacchetto CorbolPad.exe mancante nell'installer");
                 string tmp = ExePath + ".new";
                 using (var dst = File.Create(tmp)) src.CopyTo(dst);
                 if (File.Exists(ExePath)) File.Delete(ExePath);
@@ -249,7 +261,7 @@ namespace AppPad.Setup
 
             using (var k = Registry.CurrentUser.CreateSubKey(UninstKey))
             {
-                k.SetValue("DisplayName", "AppPad");
+                k.SetValue("DisplayName", "CorbolPad");
                 k.SetValue("DisplayVersion", AppVersion.Text);
                 k.SetValue("VersionMajor", Current.Major, RegistryValueKind.DWord);
                 k.SetValue("VersionMinor", Current.Minor, RegistryValueKind.DWord);
@@ -268,6 +280,8 @@ namespace AppPad.Setup
                 k.SetValue("FileTypes", fileTypes ? 1 : 0, RegistryValueKind.DWord);
             }
 
+            UpdateOldAppKey(TextTypes);
+            RetargetPins();
             if (launch) Process.Start(new ProcessStartInfo(ExePath) { WorkingDirectory = InstallDir });
         }
 
@@ -286,10 +300,10 @@ namespace AppPad.Setup
 
         public static bool Uninstall(bool silent, bool purge)
         {
-            string title = L.T("Disinstalla AppPad", "Uninstall AppPad");
+            string title = L.T("Disinstalla CorbolPad", "Uninstall CorbolPad");
             if (!silent)
             {
-                if (MessageBox.Show(L.T("Vuoi disinstallare AppPad?", "Do you want to uninstall AppPad?"), title,
+                if (MessageBox.Show(L.T("Vuoi disinstallare CorbolPad?", "Do you want to uninstall CorbolPad?"), title,
                         MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes)
                     return false;
                 long data = DirSize(SettingsDir) + DirSize(LocalDataDir);
@@ -297,12 +311,12 @@ namespace AppPad.Setup
                 {
                     // I dati possono contenere testo non salvato: di default si tengono
                     var r = MessageBox.Show(
-                        L.F("Eliminare anche i dati di AppPad ({0})?\n\n" +
+                        L.F("Eliminare anche i dati di CorbolPad ({0})?\n\n" +
                             "Sono le impostazioni, le schede aperte con il testo non salvato e i file dell'assistente locale. " +
-                            "Se li tieni, reinstallando AppPad ritrovi tutto com'era.",
-                            "Also delete AppPad's data ({0})?\n\n" +
+                            "Se li tieni, reinstallando CorbolPad ritrovi tutto com'era.",
+                            "Also delete CorbolPad's data ({0})?\n\n" +
                             "These are the settings, the open tabs with unsaved text and the local assistant files. " +
-                            "If you keep them, reinstalling AppPad brings everything back.", FormatBytes(data)),
+                            "If you keep them, reinstalling CorbolPad brings everything back.", FormatBytes(data)),
                         title, MessageBoxButtons.YesNoCancel, MessageBoxIcon.Question, MessageBoxDefaultButton.Button2);
                     if (r == DialogResult.Cancel) return false;
                     purge = r == DialogResult.Yes;
@@ -331,12 +345,73 @@ namespace AppPad.Setup
                 WorkingDirectory = Path.GetTempPath()
             });
 
-            if (!silent) MessageBox.Show(L.T("AppPad è stato disinstallato.", "AppPad has been uninstalled."), title, MessageBoxButtons.OK, MessageBoxIcon.Information);
+            if (!silent) MessageBox.Show(L.T("CorbolPad è stato disinstallato.", "CorbolPad has been uninstalled."), title, MessageBoxButtons.OK, MessageBoxIcon.Information);
             return true;
         }
 
-        // Deve coincidere con Program.AppUserModelId in AppPad.cs
-        const string AppUserModelId = "AppPad.Editor";
+        // "Apri con" col nome vecchio: se è l'app predefinita scelta dall'utente per qualche tipo di file
+        // (Apri con > Usa sempre questa app), la voce resta e apre il nuovo exe, altrimenti si toglie
+        static void UpdateOldAppKey(string[] exts)
+        {
+            string key = @"Software\Classes\Applications\" + OldApp.Name + ".exe";
+            string id = @"Applications\" + OldApp.Name + ".exe";
+            bool chosen = false;
+            foreach (var e in exts)
+                try
+                {
+                    using (var k = Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Explorer\FileExts\" + e + @"\UserChoice"))
+                        if (k != null && string.Equals(k.GetValue("ProgId") as string, id, StringComparison.OrdinalIgnoreCase)) chosen = true;
+                }
+                catch { }
+            if (!chosen)
+            {
+                try { Registry.CurrentUser.DeleteSubKeyTree(key, false); } catch { }
+                return;
+            }
+            try
+            {
+                using (var k = Registry.CurrentUser.CreateSubKey(key))
+                {
+                    k.SetValue("FriendlyAppName", "CorbolPad");
+                    try { k.DeleteSubKeyTree("SupportedTypes", false); } catch { } // niente doppioni in "Apri con"
+                    using (var c = k.CreateSubKey(@"shell\open\command")) c.SetValue("", "\"" + ExePath + "\" \"%1\"");
+                }
+            }
+            catch { }
+        }
+
+        // Icone fissate alla barra delle applicazioni che aprono l'exe col nome vecchio: ora aprono quello nuovo
+        // (stesso AppUserModelID, quindi l'icona fissata resta quella della finestra aperta)
+        static void RetargetPins()
+        {
+            string dir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                @"Microsoft\Internet Explorer\Quick Launch\User Pinned\TaskBar");
+            if (!Directory.Exists(dir)) return;
+            foreach (var lnk in Directory.GetFiles(dir, "*.lnk"))
+            {
+                IShellLinkW link = null;
+                try
+                {
+                    link = (IShellLinkW)new CShellLink();
+                    var pf = (System.Runtime.InteropServices.ComTypes.IPersistFile)link;
+                    pf.Load(lnk, 2 /* STGM_READWRITE */);
+                    var sb = new System.Text.StringBuilder(1024);
+                    link.GetPath(sb, sb.Capacity, IntPtr.Zero, 0);
+                    if (string.Equals(sb.ToString(), OldApp.ExePath, StringComparison.OrdinalIgnoreCase))
+                    {
+                        link.SetPath(ExePath);
+                        link.SetWorkingDirectory(InstallDir);
+                        link.SetIconLocation(ExePath, 0);
+                        pf.Save(lnk, true);
+                    }
+                }
+                catch { }
+                finally { if (link != null) Marshal.FinalReleaseComObject(link); }
+            }
+        }
+
+        // Deve coincidere con Program.AppUserModelId in CorbolPad.cs
+        const string AppUserModelId = "AppPad.Editor"; // come prima del cambio di nome: le icone già fissate alla barra restano della stessa app
 
         // Crea il collegamento con l'AppUserModelID, così l'icona fissata alla barra corrisponde alla finestra aperta.
         static void CreateShortcut(string lnkPath, string target, string args, string description)
@@ -422,11 +497,17 @@ namespace AppPad.Setup
             string vi = installed != null ? Installer.V(installed) : null, vc = Installer.V(cur);
             string infoText, action;
             bool warn = false;
-            if (installed == null)
+            if (installed != null && !File.Exists(Installer.ExePath))
+            {
+                action = L.T("Aggiorna", "Update");
+                infoText = L.F("{0} {1} diventa CorbolPad {2}: cambia solo il nome, le impostazioni vengono mantenute.",
+                               "{0} {1} becomes CorbolPad {2}: only the name changes, your settings are kept.", OldApp.Name, vi, vc);
+            }
+            else if (installed == null)
             {
                 action = L.T("Installa", "Install");
-                infoText = L.T("AppPad verrà installato solo per il tuo utente, senza permessi di amministratore, nella cartella:",
-                               "AppPad will be installed for your user only, without administrator rights, in the folder:");
+                infoText = L.T("CorbolPad verrà installato solo per il tuo utente, senza permessi di amministratore, nella cartella:",
+                               "CorbolPad will be installed for your user only, without administrator rights, in the folder:");
             }
             else if (installed < cur)
             {
@@ -448,11 +529,11 @@ namespace AppPad.Setup
                                "Warning: a newer version ({0}) is installed. This installer contains the older {1}. Continuing will replace it.", vi, vc);
             }
             if (Installer.IsRunning())
-                infoText += "\n" + L.T("AppPad è aperto: verrà chiuso e riaperto con le stesse schede, anche quelle non salvate.",
-                                       "AppPad is open: it will be closed and reopened with the same tabs, including unsaved ones.");
+                infoText += "\n" + L.T("CorbolPad è aperto: verrà chiuso e riaperto con le stesse schede, anche quelle non salvate.",
+                                       "CorbolPad is open: it will be closed and reopened with the same tabs, including unsaved ones.");
 
             var accent = Color.FromArgb(37, 99, 235);
-            Text = action + " AppPad";
+            Text = action + " CorbolPad";
             FormBorderStyle = FormBorderStyle.FixedDialog;
             MaximizeBox = MinimizeBox = false;
             StartPosition = FormStartPosition.CenterScreen;
@@ -468,7 +549,7 @@ namespace AppPad.Setup
             try { using (var ic = new Icon(Icon, 64, 64)) pic.Image = ic.ToBitmap(); } catch { }
             var title = new Label
             {
-                Text = "AppPad " + AppVersion.Text, ForeColor = Color.White, AutoSize = true,
+                Text = "CorbolPad " + AppVersion.Text, ForeColor = Color.White, AutoSize = true,
                 Font = new Font("Segoe UI Semibold", 15f), Location = new Point(88, 16), BackColor = Color.Transparent
             };
             var sub = new Label
@@ -493,16 +574,16 @@ namespace AppPad.Setup
 
             cbContext = new CheckBox
             {
-                Text = L.T("Aggiungi \"Apri con AppPad\" al tasto destro dei file", "Add \"Open with AppPad\" to the right-click menu of files"),
+                Text = L.T("Aggiungi \"Apri con CorbolPad\" al tasto destro dei file", "Add \"Open with CorbolPad\" to the right-click menu of files"),
                 AutoSize = true, Checked = Installer.ContextMenuEnabled()
             };
             cbTypes = new CheckBox
             {
-                Text = L.T("Proponi AppPad per aprire i file di testo (\"Apri con\" e App predefinite)", "Offer AppPad to open text files (\"Open with\" and Default apps)"),
+                Text = L.T("Proponi CorbolPad per aprire i file di testo (\"Apri con\" e App predefinite)", "Offer CorbolPad to open text files (\"Open with\" and Default apps)"),
                 AutoSize = true, Checked = Installer.FileTypesEnabled()
             };
             cbDesktop = new CheckBox { Text = L.T("Crea un collegamento sul desktop", "Create a desktop shortcut"), AutoSize = true, Checked = Installer.DesktopShortcutExists() };
-            cbLaunch = new CheckBox { Text = L.T("Avvia AppPad al termine", "Launch AppPad when finished"), AutoSize = true, Checked = true };
+            cbLaunch = new CheckBox { Text = L.T("Avvia CorbolPad al termine", "Launch CorbolPad when finished"), AutoSize = true, Checked = true };
             foreach (var cb in new[] { cbContext, cbTypes, cbDesktop, cbLaunch }) cb.Left = 22;
 
             lblStatus = new Label { Location = new Point(20, 262), Size = new Size(240, 20), ForeColor = Color.DimGray };
@@ -522,7 +603,7 @@ namespace AppPad.Setup
             {
                 Text = owner + lic, AutoSize = true, Location = new Point(18, 7), ForeColor = Color.DimGray,
                 LinkColor = accent, ActiveLinkColor = accent,
-                LinkBehavior = LinkBehavior.HoverUnderline, BackColor = Color.Transparent
+                LinkBehavior = LinkBehavior.AlwaysUnderline, BackColor = Color.Transparent
             };
             credits.LinkArea = new LinkArea(owner.Length, lic.Length);
             credits.LinkClicked += delegate { OpenUrl(AppVersion.RepoUrl + "/blob/main/LICENSE"); };
@@ -530,7 +611,7 @@ namespace AppPad.Setup
             {
                 Text = "GitHub", AutoSize = true, Anchor = AnchorStyles.Top | AnchorStyles.Right,
                 LinkColor = accent, ActiveLinkColor = accent,
-                LinkBehavior = LinkBehavior.HoverUnderline, BackColor = Color.Transparent
+                LinkBehavior = LinkBehavior.AlwaysUnderline, BackColor = Color.Transparent
             };
             site.LinkClicked += delegate { OpenUrl(AppVersion.RepoUrl); };
             footer.Controls.AddRange(new Control[] { credits, site });
@@ -573,17 +654,17 @@ namespace AppPad.Setup
                 bool wasRunning = Installer.IsRunning();
                 Installer.Install(cbDesktop.Checked, cbContext.Checked, cbTypes.Checked, cbLaunch.Checked || wasRunning);
                 Cursor = Cursors.Default;
-                string done = L.T("AppPad è stato installato. Lo trovi nel menu Start.", "AppPad has been installed. You can find it in the Start menu.");
+                string done = L.T("CorbolPad è stato installato. Lo trovi nel menu Start.", "CorbolPad has been installed. You can find it in the Start menu.");
                 if (cbContext.Checked)
-                    done += "\n\n" + L.T("Per aprire un file: tasto destro → Apri con AppPad (in Windows 11: Mostra altre opzioni).",
-                                         "To open a file: right-click → Open with AppPad (in Windows 11: Show more options).");
+                    done += "\n\n" + L.T("Per aprire un file: tasto destro → Apri con CorbolPad (in Windows 11: Mostra altre opzioni).",
+                                         "To open a file: right-click → Open with CorbolPad (in Windows 11: Show more options).");
                 if (cbTypes.Checked)
-                    done += "\n\n" + L.T("Per usarlo sempre con i file .txt: tasto destro su un file .txt → Apri con → Scegli un'altra app → AppPad → Sempre. " +
-                                         "Oppure da Impostazioni → App → App predefinite → AppPad.",
-                                         "To always use it for .txt files: right-click a .txt file → Open with → Choose another app → AppPad → Always. " +
-                                         "Or from Settings → Apps → Default apps → AppPad.");
-                done += "\n\n" + L.T("Per disinstallarlo: Impostazioni → App → App installate → AppPad.", "To uninstall it: Settings → Apps → Installed apps → AppPad.");
-                MessageBox.Show(this, done, "AppPad", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    done += "\n\n" + L.T("Per usarlo sempre con i file .txt: tasto destro su un file .txt → Apri con → Scegli un'altra app → CorbolPad → Sempre. " +
+                                         "Oppure da Impostazioni → App → App predefinite → CorbolPad.",
+                                         "To always use it for .txt files: right-click a .txt file → Open with → Choose another app → CorbolPad → Always. " +
+                                         "Or from Settings → Apps → Default apps → CorbolPad.");
+                done += "\n\n" + L.T("Per disinstallarlo: Impostazioni → App → App installate → CorbolPad.", "To uninstall it: Settings → Apps → Installed apps → CorbolPad.");
+                MessageBox.Show(this, done, "CorbolPad", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 Close();
             }
             catch (Exception ex)
@@ -591,7 +672,7 @@ namespace AppPad.Setup
                 Cursor = Cursors.Default;
                 lblStatus.Text = "";
                 btnInstall.Enabled = btnCancel.Enabled = true;
-                MessageBox.Show(this, L.T("Installazione non riuscita:", "Installation failed:") + "\n" + ex.Message, "AppPad", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show(this, L.T("Installazione non riuscita:", "Installation failed:") + "\n" + ex.Message, "CorbolPad", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
     }

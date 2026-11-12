@@ -11,7 +11,7 @@ using System.Text;
 using System.Threading;
 using System.Windows.Forms;
 
-namespace AppPad
+namespace CorbolPad
 {
     partial class MainForm
     {
@@ -212,7 +212,7 @@ namespace AppPad
                 try { BeginInvoke(new Action(delegate { FinishAi(job, res); })); } catch { }
             });
             t.IsBackground = true;
-            t.Name = "AppPad AI";
+            t.Name = "CorbolPad AI";
             t.Start();
             aiTimer.Start();
         }

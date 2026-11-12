@@ -11,7 +11,7 @@ using System.Text;
 using System.Threading;
 using System.Windows.Forms;
 
-namespace AppPad
+namespace CorbolPad
 {
     class AiSettingsForm : Form
     {
@@ -261,8 +261,8 @@ namespace AppPad
             cbCcModel.Items.Add(new Item("", L.T("Predefinito di Claude Code", "Claude Code default")));
             foreach (var m in ClaudeCodeProvider.Models) cbCcModel.Items.Add(new Item(m, m));
             Row(t, L.T("Mo&dello:", "Mo&del:"), cbCcModel);
-            Row(t, null, Note(L.T("AppPad avvia Claude Code senza strumenti (non può leggere file né eseguire comandi) e senza salvare la sessione: riceve solo il testo su cui lavora l'assistente, che viene inviato ad Anthropic. L'uso rientra nei limiti del tuo abbonamento.",
-                                  "AppPad runs Claude Code without tools (it cannot read files or run commands) and without saving the session: it only receives the text the assistant works on, which is sent to Anthropic. Usage counts toward your subscription limits.")));
+            Row(t, null, Note(L.T("CorbolPad avvia Claude Code senza strumenti (non può leggere file né eseguire comandi) e senza salvare la sessione: riceve solo il testo su cui lavora l'assistente, che viene inviato ad Anthropic. L'uso rientra nei limiti del tuo abbonamento.",
+                                  "CorbolPad runs Claude Code without tools (it cannot read files or run commands) and without saving the session: it only receives the text the assistant works on, which is sent to Anthropic. Usage counts toward your subscription limits.")));
             root.Controls.Add(gClaudeCode);
         }
 
@@ -579,8 +579,8 @@ namespace AppPad
             UpdateLocal();
             if (AiDownloader.UsedBytes() > 0)
             {
-                lblLocalState.Text = L.T("Alcuni file sono in uso e non si sono potuti cancellare: riprova dopo aver chiuso AppPad.",
-                                         "Some files are in use and could not be deleted: try again after closing AppPad.");
+                lblLocalState.Text = L.T("Alcuni file sono in uso e non si sono potuti cancellare: riprova dopo aver chiuso CorbolPad.",
+                                         "Some files are in use and could not be deleted: try again after closing CorbolPad.");
                 lblLocalState.ForeColor = ErrColor;
             }
         }

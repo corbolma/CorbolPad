@@ -2,8 +2,8 @@
 // Una volta al giorno (se attivo) legge l'ultima release del repository; se è più recente scarica in background
 // l'installer pubblicato lì e lo verifica con lo SHA-256 scritto nelle note della release ("SHA-256: <impronta>").
 // L'installer verificato si avvia con un clic (pulsante sulla barra dei menu) oppure da solo, in silenzio, quando
-// AppPad si chiude: alla riapertura c'è la versione nuova, con le stesse schede.
-// Solo l'AppPad installato (in %LOCALAPPDATA%\Programs\AppPad) si aggiorna da solo; una copia portatile lo propone e basta.
+// CorbolPad si chiude: alla riapertura c'è la versione nuova, con le stesse schede.
+// Solo il CorbolPad installato (in %LOCALAPPDATA%\Programs\CorbolPad) si aggiorna da solo; una copia portatile lo propone e basta.
 using System;
 using System.Diagnostics;
 using System.Globalization;
@@ -15,7 +15,7 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using System.Windows.Forms;
 
-namespace AppPad
+namespace CorbolPad
 {
     static class Updater
     {
@@ -29,7 +29,7 @@ namespace AppPad
         static string ApiLatest = AppVersion.RepoUrl.Replace("https://github.com/", "https://api.github.com/repos/") + "/releases/latest";
         static string DownloadPrefix = AppVersion.RepoUrl + "/releases/download/";
 
-        static string Dir { get { return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "AppPad", "update"); } }
+        static string Dir { get { return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "CorbolPad", "update"); } }
 
         // Aggiornamenti automatici: attivi di default
         public static bool Auto
@@ -38,12 +38,12 @@ namespace AppPad
             set { Settings.Set("autoUpdate", value); Settings.Save(); }
         }
 
-        // AppPad installato con l'installer (non una copia portatile)
+        // CorbolPad installato con l'installer (non una copia portatile)
         public static bool Installed
         {
             get
             {
-                string dir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Programs", "AppPad");
+                string dir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Programs", "CorbolPad");
                 try { return string.Equals(Path.GetDirectoryName(Application.ExecutablePath), dir, StringComparison.OrdinalIgnoreCase); }
                 catch { return false; }
             }
@@ -67,7 +67,7 @@ namespace AppPad
                 if (!Directory.Exists(Dir)) return;
                 foreach (var f in Directory.GetFiles(Dir))
                 {
-                    var m = Regex.Match(Path.GetFileName(f), @"^AppPad-Setup-(\d+\.\d+\.\d+)\.exe(\.part)?$");
+                    var m = Regex.Match(Path.GetFileName(f), @"^CorbolPad-Setup-(\d+\.\d+\.\d+)\.exe(\.part)?$");
                     System.Version v;
                     if (!m.Success || !System.Version.TryParse(m.Groups[1].Value, out v) || v <= new System.Version(AppVersion.Text) || m.Groups[2].Success)
                         try { File.Delete(f); } catch { }
@@ -89,7 +89,7 @@ namespace AppPad
                     try { ServicePointManager.SecurityProtocol |= SecurityProtocolType.Tls12; } catch { }
                     var req = (HttpWebRequest)WebRequest.Create(ApiLatest);
                     req.Timeout = 15000;
-                    req.UserAgent = "AppPad/" + AppVersion.Text;
+                    req.UserAgent = "CorbolPad/" + AppVersion.Text;
                     req.Accept = "application/vnd.github+json";
                     string json;
                     using (var resp = req.GetResponse())
@@ -119,7 +119,7 @@ namespace AppPad
             }
             if (latest <= new System.Version(AppVersion.Text))
             {
-                if (manual) Msg(ui, L.F("Hai già l'ultima versione di AppPad ({0}).", "You already have the latest version of AppPad ({0}).", AppVersion.Text),
+                if (manual) Msg(ui, L.F("Hai già l'ultima versione di CorbolPad ({0}).", "You already have the latest version of CorbolPad ({0}).", AppVersion.Text),
                                 MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;
             }
@@ -145,7 +145,7 @@ namespace AppPad
             string u = url, s = sha, ver = Version;
             ThreadPool.QueueUserWorkItem(delegate
             {
-                string file = Path.Combine(Dir, "AppPad-Setup-" + ver + ".exe");
+                string file = Path.Combine(Dir, "CorbolPad-Setup-" + ver + ".exe");
                 string err = null;
                 try
                 {
@@ -156,7 +156,7 @@ namespace AppPad
                         string part = file + ".part";
                         using (var wc = new WebClient())
                         {
-                            wc.Headers[HttpRequestHeader.UserAgent] = "AppPad/" + AppVersion.Text;
+                            wc.Headers[HttpRequestHeader.UserAgent] = "CorbolPad/" + AppVersion.Text;
                             wc.DownloadFile(u, part);
                         }
                         if (HashOf(part) != s)
@@ -197,7 +197,7 @@ namespace AppPad
                 return BitConverter.ToString(h.ComputeHash(st)).Replace("-", "").ToLowerInvariant();
         }
 
-        // Pulsante "Aggiorna" o voce del menu: installa adesso (l'installer chiude AppPad e lo riapre con le stesse schede)
+        // Pulsante "Aggiorna" o voce del menu: installa adesso (l'installer chiude CorbolPad e lo riapre con le stesse schede)
         public static void Offer(Control ui)
         {
             if (Version == null) return;
@@ -207,10 +207,10 @@ namespace AppPad
                 Util.OpenUrl(page);
                 return;
             }
-            var r = Msg(ui, L.F("AppPad {0} è pronto da installare (ora hai la {1}).\n\nInstallarlo adesso? AppPad si chiude e si riapre con le stesse schede, anche quelle non salvate. " +
-                                "Altrimenti si installa da solo quando chiudi AppPad.\n\nNovità: {2}",
-                                "AppPad {0} is ready to install (you have {1}).\n\nInstall it now? AppPad will close and reopen with the same tabs, including unsaved ones. " +
-                                "Otherwise it installs by itself when you close AppPad.\n\nWhat's new: {2}",
+            var r = Msg(ui, L.F("CorbolPad {0} è pronto da installare (ora hai la {1}).\n\nInstallarlo adesso? CorbolPad si chiude e si riapre con le stesse schede, anche quelle non salvate. " +
+                                "Altrimenti si installa da solo quando chiudi CorbolPad.\n\nNovità: {2}",
+                                "CorbolPad {0} is ready to install (you have {1}).\n\nInstall it now? CorbolPad will close and reopen with the same tabs, including unsaved ones. " +
+                                "Otherwise it installs by itself when you close CorbolPad.\n\nWhat's new: {2}",
                                 Version, AppVersion.Text, page), MessageBoxButtons.YesNo, MessageBoxIcon.Information);
             if (r != DialogResult.Yes) return;
             if (!Launch(false))
@@ -218,7 +218,7 @@ namespace AppPad
                     MessageBoxButtons.OK, MessageBoxIcon.Warning);
         }
 
-        // Alla chiusura di AppPad: se c'è un aggiornamento pronto, lo installa in silenzio (solo per l'AppPad installato)
+        // Alla chiusura di CorbolPad: se c'è un aggiornamento pronto, lo installa in silenzio (solo per il CorbolPad installato)
         public static void InstallOnExit()
         {
             if (ReadyFile == null || !Auto || !Installed) return;
@@ -240,7 +240,7 @@ namespace AppPad
 
         static DialogResult Msg(Control owner, string text, MessageBoxButtons buttons, MessageBoxIcon icon)
         {
-            return MessageBox.Show(owner, text, "AppPad", buttons, icon);
+            return MessageBox.Show(owner, text, "CorbolPad", buttons, icon);
         }
     }
 }
