@@ -277,9 +277,49 @@ namespace CorbolPad
             var last = chatPieces.Count > 0 ? chatPieces[chatPieces.Count - 1] : null;
             if (last != null && last.Color == c && last.Bold == bold) last.Text.Append(text);
             else { last = new ChatPiece { Color = c, Bold = bold }; last.Text.Append(text); chatPieces.Add(last); }
-            Render(text, c, bold);
-            aiLog.SelectionStart = aiLog.TextLength;
-            aiLog.ScrollToCaret();
+            bool bottom = ChatAtBottom();
+            ChatRedraw(false);
+            try { Render(text, c, bold); }
+            finally { ChatRedraw(true, bottom); }
+        }
+
+        [System.Runtime.InteropServices.DllImport("user32.dll")] static extern IntPtr SendMessage(IntPtr h, int msg, IntPtr w, IntPtr l);
+        [System.Runtime.InteropServices.DllImport("user32.dll")] static extern bool GetScrollInfo(IntPtr h, int bar, ref SCROLLINFO si);
+        struct SCROLLINFO { public int cbSize, fMask, nMin, nMax, nPage, nPos, nTrackPos; }
+        const int WM_SETREDRAW = 0x000B, WM_VSCROLL = 0x0115, SB_BOTTOM = 7, SB_VERT = 1, SIF_ALL = 0x17,
+                  EM_GETSCROLLPOS = 0x04DD, EM_SETSCROLLPOS = 0x04DE;
+
+        // In fondo alla conversazione (o senza barra): il testo nuovo la fa scorrere; altrimenti si resta dove si legge
+        bool ChatAtBottom()
+        {
+            if (!aiLog.IsHandleCreated) return true;
+            var si = new SCROLLINFO { cbSize = System.Runtime.InteropServices.Marshal.SizeOf(typeof(SCROLLINFO)), fMask = SIF_ALL };
+            if (!GetScrollInfo(aiLog.Handle, SB_VERT, ref si) || si.nPage == 0) return true;
+            return si.nPos + si.nPage >= si.nMax - aiLog.Font.Height * 3 / 2;   // a meno di una riga e mezza dal fondo
+        }
+
+        // Il testo si aggiunge con la selezione: senza ridisegno sospeso la casella lampeggia a ogni pezzo di risposta
+        int chatSelStart, chatSelLength;
+        IntPtr chatScrollPos = System.Runtime.InteropServices.Marshal.AllocHGlobal(8);   // POINT, per tutta la vita del programma
+        void ChatRedraw(bool on, bool scrollToEnd = false)
+        {
+            if (!aiLog.IsHandleCreated) return;
+            if (!on)
+            {
+                chatSelStart = aiLog.SelectionStart; chatSelLength = aiLog.SelectionLength;
+                SendMessage(aiLog.Handle, EM_GETSCROLLPOS, IntPtr.Zero, chatScrollPos);
+                SendMessage(aiLog.Handle, WM_SETREDRAW, IntPtr.Zero, IntPtr.Zero);
+                return;
+            }
+            if (scrollToEnd) aiLog.Select(aiLog.TextLength, 0);
+            else
+            {
+                aiLog.Select(chatSelStart, chatSelLength);
+                SendMessage(aiLog.Handle, EM_SETSCROLLPOS, IntPtr.Zero, chatScrollPos);
+            }
+            SendMessage(aiLog.Handle, WM_SETREDRAW, (IntPtr)1, IntPtr.Zero);
+            if (scrollToEnd) SendMessage(aiLog.Handle, WM_VSCROLL, (IntPtr)SB_BOTTOM, IntPtr.Zero);
+            aiLog.Invalidate();
         }
 
         void Render(string text, ChatColor c, bool bold)
@@ -303,10 +343,13 @@ namespace CorbolPad
         void RecolorChat()
         {
             if (chatPieces.Count == 0) return;
-            aiLog.Clear();
-            foreach (var p in chatPieces) Render(p.Text.ToString(), p.Color, p.Bold);
-            aiLog.SelectionStart = aiLog.TextLength;
-            aiLog.ScrollToCaret();
+            ChatRedraw(false);
+            try
+            {
+                aiLog.Clear();
+                foreach (var p in chatPieces) Render(p.Text.ToString(), p.Color, p.Bold);
+            }
+            finally { ChatRedraw(true, true); }
         }
 
         void UpdateChatButtons()
