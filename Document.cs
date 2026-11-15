@@ -14,6 +14,7 @@ namespace CorbolPad
     {
         public string Path;             // null = senza titolo
         public int UntitledNo;
+        public string Name;             // nome di una scheda senza file (es. il titolo di una pagina web); null = "Senza titolo N"
         public Enc Encoding = Enc.Utf8;
         public int Eol = Sci.SC_EOL_CRLF;
         public SciEditor Editor;        // null finché la scheda non viene mostrata (sessione ripristinata)
@@ -34,7 +35,7 @@ namespace CorbolPad
 
         public string Title
         {
-            get { return Path != null ? System.IO.Path.GetFileName(Path) : L.F("Senza titolo {0}", "Untitled {0}", UntitledNo); }
+            get { return Path != null ? System.IO.Path.GetFileName(Path) : Name ?? L.F("Senza titolo {0}", "Untitled {0}", UntitledNo); }
         }
 
         public string BackupFile { get { return BackupId == null ? null : System.IO.Path.Combine(Session.BackupDir, BackupId + ".txt"); } }
@@ -305,7 +306,8 @@ namespace CorbolPad
                         BackupId = f[3].Length > 0 ? f[3] : null,
                         ExtraDirty = f[6] == "1",
                         RestoreCaret = P(f[7]), RestoreAnchor = P(f[8]), RestoreFirstLine = P(f[9]),
-                        FileSize = P(f[11])
+                        FileSize = P(f[11]),
+                        Name = f.Length > 12 && f[12].Length > 0 ? f[12] : null    // dalla 1.2.0
                     };
                     Enc e; if (Enum.TryParse(f[4], out e)) d.Encoding = e;
                     long eol = P(f[5]); if (eol >= 0 && eol <= 2) d.Eol = (int)eol;
@@ -368,7 +370,8 @@ namespace CorbolPad
                 sb.Append("tab\t").Append(d.Path ?? "").Append('\t').Append(d.UntitledNo).Append('\t').Append(d.BackupId ?? "")
                   .Append('\t').Append(d.Encoding).Append('\t').Append(d.Eol).Append('\t').Append(dirty && d.BackupId != null ? "1" : "0")
                   .Append('\t').Append(L_(d.RestoreCaret)).Append('\t').Append(L_(d.RestoreAnchor)).Append('\t').Append(L_(d.RestoreFirstLine))
-                  .Append('\t').Append(L_(d.FileTimeUtc.Ticks)).Append('\t').Append(L_(d.FileSize)).Append("\r\n");
+                  .Append('\t').Append(L_(d.FileTimeUtc.Ticks)).Append('\t').Append(L_(d.FileSize))
+                  .Append('\t').Append(d.Path == null && d.Name != null ? d.Name.Replace('\t', ' ').Replace('\r', ' ').Replace('\n', ' ') : "").Append("\r\n");
                 idx++;
             }
             sb.Append("active\t").Append(activeIdx).Append("\r\n");

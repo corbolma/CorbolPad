@@ -41,6 +41,7 @@ Le chiavi API restano sul PC, cifrate con la protezione dati di Windows. *Prova 
 
 Cosa fa:
 - **Chiedi all'assistente** con `F1` (o `Ctrl+K`, o il pulsante a destra della barra dei menu): un pannello di conversazione **a lato o sotto** l'editor. L'assistente **legge le schede aperte**: di base la scheda attiva (o il testo selezionato), più le schede che nomini nella domanda ("confronta con note.txt"); oppure, a scelta, tutte le schede aperte. Non serve incollare nulla. Se la scheda è troppo lunga, l'assistente cerca nel file i passaggi che contengono le parole della domanda (frasi "tra virgolette" cercate così come sono) e li legge insieme alla parte intorno al cursore. La risposta si inserisce al cursore, al posto della selezione o in una nuova scheda.
+- **Pagine web**: incolla un indirizzo nel pannello. L'indirizzo da solo, oppure "trascrivi https://...", apre il testo della pagina in una nuova scheda (senza usare l'assistente); "riassumi https://...", "traduci..." o una domanda fanno leggere la pagina all'assistente, a parti se è lunga. CorbolPad scarica la pagina e tiene il testo principale, senza menu, cookie e piè di pagina. Le pagine che creano il testo con JavaScript o richiedono l'accesso non si possono leggere.
 - Dal menu *Assistente* e dal tasto destro: **correggi** (`F7`), riformula, più formale, più breve, traduci in italiano o in inglese. Il risultato compare mentre viene scritto al posto della selezione (o di tutto il documento), e si annulla con un solo `Ctrl+Z`. *Riassumi* e *Spiega* scrivono in una nuova scheda. `Esc` ferma e rimette il testo com'era. **Testi lunghi**: l'assistente li divide da solo in parti (a fine paragrafo) e le elabora una dopo l'altra; *Riassumi* e *Spiega* prendono appunti su ogni parte e scrivono il risultato dagli appunti. Con `Esc` le parti già finite restano. Limite: 2 milioni di caratteri.
 - La prima volta che usi un servizio in rete, CorbolPad chiede conferma prima di inviare il testo.
 
@@ -91,6 +92,7 @@ CorbolPad non raccoglie dati. Si collega a Internet solo per:
 - **aggiornamenti**: una volta al giorno legge da `api.github.com` qual è l'ultima versione, e scarica l'installer da GitHub se ce n'è una nuova. Non invia nulla di tuo. Si spegne dal menu *? > Aggiorna automaticamente*;
 - **assistente locale**, se lo attivi: solo per scaricare il modello e llama.cpp; poi il testo resta sul PC;
 - **Claude o un altro servizio**: il testo su cui lavora l'assistente e le domande che scrivi vengono inviati a quel servizio, e valgono le sue condizioni.
+- **pagine web**: solo quando incolli un indirizzo nel pannello dell'assistente, CorbolPad scarica quella pagina dal PC (senza inviare nulla di tuo al sito).
 
 ---
 
@@ -115,6 +117,7 @@ Full guide and FAQ (in Italian) in the [Wiki](https://github.com/corbolma/Corbol
 
   API keys are stored encrypted with Windows data protection.
   - `F1` (or `Ctrl+K`, or the button at the right of the menu bar) opens a **chat panel at the side or bottom**. The assistant **reads your open tabs**: the active tab (or the selection) plus any tab you name in the question, or optionally all open tabs. No pasting needed. Insert the answer at the cursor, in place of the selection or in a new tab.
+  - **Web pages**: paste an address in the panel. The address alone, or "transcribe https://...", opens the text of the page in a new tab (without the assistant); "summarize https://...", "translate..." or a question make the assistant read the page, in parts if it is long. CorbolPad downloads the page and keeps the main text, without menus, cookie notices and footers. Pages that build their text with JavaScript or need a login cannot be read.
   - The *Assistant* menu and the context menu offer fix (`F7`), rewrite, more formal, shorter, translate, summarize and explain. Results stream in place, one `Ctrl+Z` undoes them, and `Esc` stops and restores the text. Long texts are split automatically into parts (at paragraph ends) and processed one after the other; summarize and explain take notes on each part first. Up to 2 million characters.
 - **Install**: run `CorbolPad-Setup-X.Y.Z.exe` from the [Releases](https://github.com/corbolma/CorbolPad/releases/latest).
   - It installs per user, without admin rights, and can add "Open with CorbolPad" to the right-click menu and offer CorbolPad for text files. `/silent` installs without windows.
@@ -123,7 +126,8 @@ Full guide and FAQ (in Italian) in the [Wiki](https://github.com/corbolma/Corbol
 - **Third-party components**: CorbolPad is MIT licensed.
   - [Scintilla](https://www.scintilla.org/License.txt) is embedded in the exe.
   - [llama.cpp](https://github.com/ggml-org/llama.cpp) (MIT) and [Qwen3.5](https://huggingface.co/Qwen) (Apache 2.0, GGUF by [Unsloth](https://huggingface.co/unsloth)) are not bundled: they are downloaded only if you choose the local assistant.
-- **Privacy**: no data collection. CorbolPad goes online only in two cases.
+- **Privacy**: no data collection. CorbolPad goes online only in these cases.
   - The daily update check (`api.github.com`) sends nothing about you and can be turned off.
   - If you turn on the assistant: the local assistant only downloads its files.
   - With Claude or another service, the text and your questions are sent to that service.
+  - When you paste a web address in the assistant panel, CorbolPad downloads that page from your PC (nothing of yours is sent to the site).

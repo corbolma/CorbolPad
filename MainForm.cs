@@ -1184,6 +1184,7 @@ namespace CorbolPad
 
             d.Path = path;
             d.UntitledNo = 0;
+            d.Name = null;
             d.Encoding = enc;
             d.ExtraDirty = false;
             d.ChangedSinceBackup = false;

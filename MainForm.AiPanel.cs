@@ -25,7 +25,10 @@ namespace CorbolPad
             "Use plain text: no Markdown headings, bold or tables; simple lists with lines starting with \"- \" are fine. " +
             "When the user asks you to write, rewrite, translate or correct text, reply with the resulting text only, " +
             "without introductions or comments, because it may be inserted into the document as it is. " +
-            "When you rewrite, correct or translate attached text, keep its line breaks, paragraphs and lists as they are.";
+            "When you rewrite, correct or translate attached text, keep its line breaks, paragraphs and lists as they are. " +
+            "When the user's message contains a web address, the editor downloads the page and gives you its text as a document with source=\"<address>\" " +
+            "(or notes on it, if it is too long): use it, and never say that you cannot open links or browse the internet. " +
+            "If a page could not be downloaded, the message says why: tell the user. The user can also open the page text in a new tab with the \"Page in tab\" button.";
 
         readonly Panel aiPanel = new Panel();
         readonly Splitter aiSplit = new Splitter();
@@ -35,7 +38,8 @@ namespace CorbolPad
         readonly ComboBox aiContext = new ComboBox();
         readonly Label aiContextLbl = new Label();
         readonly Button aiSend = new Button(), aiNew = new Button(), aiDockBtn = new Button(), aiClose = new Button();
-        readonly Button aiInsert = new Button(), aiReplace = new Button(), aiCopy = new Button(), aiNewTab = new Button();
+        readonly Button aiInsert = new Button(), aiReplace = new Button(), aiCopy = new Button(), aiNewTab = new Button(), aiPageTab = new Button();
+        List<WebPage> aiLastPages;                      // le pagine web lette per l'ultima domanda
         readonly FlowLayoutPanel aiAnswerRow = new FlowLayoutPanel();
         readonly System.Windows.Forms.Timer aiChatTimer = new System.Windows.Forms.Timer { Interval = 80 };
         readonly List<AiMessage> aiHistory = new List<AiMessage>();
@@ -51,6 +55,8 @@ namespace CorbolPad
             public readonly StringBuilder Answer = new StringBuilder();
             public readonly StringBuilder Pending = new StringBuilder();
             public readonly CancellationTokenSource Cts = new CancellationTokenSource();
+            public List<string> Urls;                   // indirizzi nella domanda: le pagine si scaricano prima di rispondere
+            public readonly List<WebPage> Pages = new List<WebPage>();
         }
 
         // ---- Costruzione ----
@@ -94,7 +100,8 @@ namespace CorbolPad
             SetupFlat(aiReplace, L.T("Sostituisci", "Replace"), L.T("Mette l'ultima risposta al posto del testo selezionato", "Puts the last answer in place of the selected text"));
             SetupFlat(aiNewTab, L.T("Nuova scheda", "New tab"), L.T("Apre l'ultima risposta in una scheda nuova", "Opens the last answer in a new tab"));
             SetupFlat(aiCopy, L.T("Copia", "Copy"), L.T("Copia l'ultima risposta negli appunti", "Copies the last answer to the clipboard"));
-            aiAnswerRow.Controls.AddRange(new Control[] { aiInsert, aiReplace, aiNewTab, aiCopy });
+            SetupFlat(aiPageTab, L.T("Pagina in scheda", "Page in tab"), L.T("Apre in una scheda nuova il testo della pagina web appena letta", "Opens the text of the web page just read in a new tab"));
+            aiAnswerRow.Controls.AddRange(new Control[] { aiInsert, aiReplace, aiNewTab, aiCopy, aiPageTab });
 
             var ctxRow = new TableLayoutPanel { ColumnCount = 2, RowCount = 1, AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, Dock = DockStyle.Fill, Margin = new Padding(0, S(4), 0, 0) };
             ctxRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
@@ -159,6 +166,7 @@ namespace CorbolPad
             aiReplace.Click += delegate { UseAnswer(AiOutput.Replace); };
             aiNewTab.Click += delegate { UseAnswer(AiOutput.NewTab); };
             aiCopy.Click += delegate { if (aiLastAnswer != null) try { Clipboard.SetText(aiLastAnswer); } catch { } };
+            aiPageTab.Click += delegate { if (aiLastPages != null && aiChat == null) foreach (var p in aiLastPages) OpenPageInTab(p); };
             aiChatTimer.Tick += delegate { FlushChat(); };
 
             LayoutAiPanel();
@@ -201,7 +209,7 @@ namespace CorbolPad
             aiInput.BackColor = aiContext.BackColor = t.InputBack;
             aiInput.ForeColor = aiContext.ForeColor = t.InputFore;
             aiSplit.BackColor = t.Border;
-            foreach (var b in new[] { aiSend, aiNew, aiDockBtn, aiClose, aiInsert, aiReplace, aiCopy, aiNewTab }) StyleFlat(b, t);
+            foreach (var b in new[] { aiSend, aiNew, aiDockBtn, aiClose, aiInsert, aiReplace, aiCopy, aiNewTab, aiPageTab }) StyleFlat(b, t);
             RecolorChat();
         }
 
@@ -243,12 +251,17 @@ namespace CorbolPad
             if (aiChat != null) aiChat.Cts.Cancel();
             aiHistory.Clear();
             aiLastAnswer = null;
+            aiLastPages = null;
             ClearChat();
             AppendChat(L.T("Scrivi qui sotto una domanda o una richiesta e premi Invio (Maiusc+Invio per andare a capo). " +
                            "L'assistente legge la scheda attiva (o il testo selezionato); con \"Legge\" puoi fargli leggere tutte le schede aperte. " +
+                           "Con un indirizzo web nella domanda legge la pagina (\"riassumi https://…\"); un indirizzo da solo, o \"trascrivi https://…\", " +
+                           "apre il testo della pagina in una scheda nuova. " +
                            "La risposta si può poi inserire nel documento con i pulsanti. F1 apre e chiude il pannello.",
                            "Type a question or request below and press Enter (Shift+Enter for a new line). " +
                            "The assistant reads the active tab (or the selected text); with \"Reads\" it can read all open tabs. " +
+                           "With a web address in the question it reads the page (\"summarize https://…\"); an address alone, or \"transcribe https://…\", " +
+                           "opens the text of the page in a new tab. " +
                            "The answer can then be put into the document with the buttons. F1 opens and closes the panel."), ChatColor.Dim, false);
             UpdateChatButtons();
         }
@@ -358,6 +371,8 @@ namespace CorbolPad
             aiSend.Text = busy ? L.T("Ferma", "Stop") : L.T("Invia", "Send");
             bool has = !busy && !string.IsNullOrEmpty(aiLastAnswer);
             aiInsert.Enabled = aiReplace.Enabled = aiNewTab.Enabled = aiCopy.Enabled = has;
+            aiPageTab.Visible = aiLastPages != null && aiLastPages.Count > 0;
+            aiPageTab.Enabled = !busy;
         }
 
         void SendChat()
@@ -366,6 +381,10 @@ namespace CorbolPad
             string q = aiInput.Text.Trim();
             if (q.Length == 0) return;
             if (aiJob != null) { AppendChat("\n" + L.T("Attendi che l'assistente finisca di scrivere nel documento.", "Wait for the assistant to finish writing in the document.") + "\n", ChatColor.Error, false); return; }
+
+            // Indirizzi web nella domanda: solo da portare in una scheda (non serve l'assistente) o da leggere per rispondere
+            var urls = WebPage.FindUrls(q);
+            if (urls.Count > 0 && WebPage.WantsCopyOnly(q)) { CopyPages(q, urls); return; }
 
             string why;
             var provider = AiProvider(out why);
@@ -379,7 +398,9 @@ namespace CorbolPad
 
             // Le schede che l'assistente legge (sempre almeno i loro nomi)
             string note, error;
-            string context = ReadTabs(q, (provider.SendsTextOutside ? CloudMaxChars : LocalMaxChars) - q.Length, provider.Name, out note, out error);
+            int maxChars = provider.SendsTextOutside ? CloudMaxChars : LocalMaxChars;
+            // Con una pagina da leggere le schede restano fuori (salvo quelle nominate): lo spazio serve alla pagina
+            string context = ReadTabs(q, (urls.Count > 0 ? maxChars / 3 : maxChars) - q.Length, provider.Name, urls.Count > 0, out note, out error);
             var parts = chatParts;                  // scheda troppo lunga da leggere tutta, a parti
             int partsRoom = chatPartsRoom;
             chatParts = null;
@@ -389,7 +410,10 @@ namespace CorbolPad
 
             // Domanda di adesso con le schede; prima, le domande e risposte precedenti finché ci stanno
             string user = context + "\n" + q;
-            int budget = (provider.SendsTextOutside ? CloudMaxChars : LocalMaxChars) - user.Length - (parts != null ? partsRoom : 0);
+            int budget = maxChars - user.Length - (parts != null ? partsRoom : 0);
+            // Alla pagina almeno 3/4 dello spazio rimasto: la conversazione precedente usa il resto
+            int webRoom = urls.Count > 0 ? budget * 3 / 4 : 0;
+            budget -= webRoom;
             var history = new List<AiMessage>();
             for (int i = aiHistory.Count - 2; i >= 0; i -= 2)
             {
@@ -402,8 +426,10 @@ namespace CorbolPad
             req.Messages.AddRange(history);
             req.Messages.Add(new AiMessage("user", user));
 
-            var job = new ChatJob { Provider = provider, Question = q };
+            webRoom += budget;      // lo spazio non usato dalla conversazione va alla pagina
+            var job = new ChatJob { Provider = provider, Question = q, Urls = urls.Count > 0 ? urls : null };
             aiChat = job;
+            aiLastPages = null;
             aiInput.Clear();
             aiTitle.Text = L.T("Assistente", "Assistant") + " · " + provider.Name;
             AppendChat((aiLog.TextLength > 0 ? "\n\n" : "") + L.T("Tu", "You") + "\n", ChatColor.Accent, true);
@@ -423,14 +449,38 @@ namespace CorbolPad
                 try
                 {
                     res = null;
-                    if (parts != null)
+                    if (job.Urls != null)
+                    {
+                        // Le pagine web: intere se ci stanno, altrimenti a parti con gli appunti come per le schede lunghe
+                        string web = ReadPages(job, webRoom, out res);
+                        if (res == null)
+                        {
+                            if (web.Length <= webRoom) InsertBeforeQuestion(req, user, q, web);
+                            else
+                            {
+                                parts = WebPage.Split(web, Math.Max(2000, webRoom));
+                                bool cut = parts.Count > MaxChatParts;
+                                if (cut) parts = parts.Take(MaxChatParts).ToList();
+                                partsRoom = webRoom;
+                                InsertBeforeQuestion(req, user, q, "\n<document name=\"" + string.Join(", ", job.Pages.Select(p => p.Title.Replace("\"", "'"))) +
+                                    "\" part=\"notes on the whole text, which was read in " + parts.Count + " parts because it is too long" +
+                                    (cut ? " (only the beginning: the page is very long)" : "") + "\">\n" + NotesMarker + "\n</document>\n");
+                                ChatNote(job, L.F("(la pagina è troppo lunga per {0} da leggere in una volta: la legge in {1} parti prendendo appunti, poi risponde dagli appunti{2})",
+                                                  "(the page is too long for {0} to read at once: it reads it in {1} parts taking notes, then answers from the notes{2})",
+                                                  provider.Name, parts.Count, cut ? L.T("; è molto lunga: solo l'inizio", "; it is very long: only the beginning") : ""));
+                            }
+                        }
+                    }
+                    if (res == null && parts != null)
                     {
                         // Prima gli appunti su ogni parte della scheda, poi la risposta dagli appunti
                         Action<string> status = st => { try { BeginInvoke(new Action(delegate { if (aiChat == job) ShowAiStatus(st); })); } catch { } };
                         var notes = new List<string>();
                         for (int i = 0; i < parts.Count && res == null; i++)
                         {
-                            status(L.F("{0} legge la scheda: parte {1} di {2}… Esc per fermare", "{0} is reading the tab: part {1} of {2}… Press Esc to stop", provider.Name, i + 1, parts.Count));
+                            status(job.Urls != null
+                                ? L.F("{0} legge la pagina: parte {1} di {2}… Esc per fermare", "{0} is reading the page: part {1} of {2}… Press Esc to stop", provider.Name, i + 1, parts.Count)
+                                : L.F("{0} legge la scheda: parte {1} di {2}… Esc per fermare", "{0} is reading the tab: part {1} of {2}… Press Esc to stop", provider.Name, i + 1, parts.Count));
                             var r = provider.Run(AiAction.BuildQuestionNotes(parts[i], q, i + 1, parts.Count), x => { }, job.Cts.Token);
                             if (!r.Ok) res = r;
                             else notes.Add(r.Text.Trim());
@@ -463,7 +513,7 @@ namespace CorbolPad
 
         // Testo per l'assistente: l'elenco delle schede aperte e il contenuto di quelle da leggere (la selezione o la
         // scheda attiva, oppure tutte, anche se non ancora caricate). note dice cosa è stato letto; error se non ci sta.
-        string ReadTabs(string question, int max, string providerName, out string note, out string error)
+        string ReadTabs(string question, int max, string providerName, bool web, out string note, out string error)
         {
             note = null; error = null;
             chatParts = null;
@@ -472,6 +522,25 @@ namespace CorbolPad
             sb.Append(string.Join(", ", docs.Select(d => "\"" + d.Title + "\"" + (d == active ? " (active)" : ""))));
             sb.Append(".\n");
             int mode = aiContext.SelectedIndex;
+            if (web)
+            {
+                // Domanda su una pagina web: delle schede solo i nomi, più quelle nominate nella domanda ("confronta con note.txt")
+                var names = new List<string>();
+                string q = WebPage.WithoutUrls(question);
+                int tabRoom = max - sb.Length;
+                foreach (var d in docs)
+                {
+                    if (!Mentions(q, d.Title) || tabRoom < 300) continue;
+                    bool truncated;
+                    string t = DocText(d, tabRoom - 100, out truncated);
+                    if (t == null) continue;
+                    AppendDoc(sb, d, t, null, truncated);
+                    tabRoom -= t.Length + d.Title.Length + 60;
+                    names.Add(truncated ? L.F("{0} (in parte)", "{0} (partly)", d.Title) : d.Title);
+                }
+                if (names.Count > 0) note = L.F("(letta anche la scheda {0}, nominata nella domanda)", "(also read the tab {0}, mentioned in the question)", string.Join(", ", names));
+                return sb.ToString();
+            }
             if (mode == 2 || active == null) return sb.ToString();
 
             if (mode == 0)
@@ -905,9 +974,13 @@ namespace CorbolPad
             aiChatTimer.Stop();
             ShowAiStatus(null);
             string answer = job.Answer.ToString().TrimEnd();
+            if (job.Pages.Count > 0) aiLastPages = job.Pages.ToList();
             if (res.Ok && answer.Length > 0)
             {
-                aiHistory.Add(new AiMessage("user", job.Question));
+                // Nella conversazione resta la domanda, con il nome delle pagine lette (non il loro testo)
+                string asked = job.Question;
+                foreach (var p in job.Pages) asked += "\n(The web page \"" + p.Title + "\" <" + p.Url + "> was read to answer this.)";
+                aiHistory.Add(new AiMessage("user", asked));
                 aiHistory.Add(new AiMessage("assistant", answer));
                 aiLastAnswer = answer;
                 if (res.Truncated) AppendChat("\n" + L.T("(risposta interrotta perché troppo lunga)", "(answer cut off because it was too long)"), ChatColor.Dim, false);
@@ -916,6 +989,137 @@ namespace CorbolPad
             else AppendChat((answer.Length > 0 ? "\n" : "") + (res.Error ?? L.F("{0} non ha scritto nulla.", "{0} wrote nothing.", job.Provider.Name)), ChatColor.Error, false);
             UpdateChatButtons();
             if (aiPanel.Visible && aiPanel.ContainsFocus) aiInput.Focus();
+        }
+
+        // ---- Pagine web ----
+
+        // Nota grigia nella conversazione, dal thread che lavora
+        void ChatNote(ChatJob job, string text)
+        {
+            try { BeginInvoke(new Action(delegate { if (aiChat == job) AppendChat(text + "\n", ChatColor.Dim, false); })); } catch { }
+        }
+
+        // Scarica le pagine della domanda (dal thread che lavora). Restituisce i documenti per l'assistente;
+        // fail se nessuna pagina si è potuta leggere o se è stato fermato.
+        string ReadPages(ChatJob job, int room, out AiResult fail)
+        {
+            fail = null;
+            var sb = new StringBuilder();
+            var errors = new List<string>();
+            foreach (var url in job.Urls)
+            {
+                if (job.Cts.IsCancellationRequested) { fail = new AiResult { Cancelled = true }; return null; }
+                try { BeginInvoke(new Action(delegate { if (aiChat == job) ShowAiStatus(L.F("Lettura di {0}… Esc per fermare", "Reading {0}… Press Esc to stop", url)); })); } catch { }
+                try
+                {
+                    var p = WebPage.Fetch(url, job.Cts.Token);
+                    if (p.Text.Trim().Length == 0)
+                    {
+                        errors.Add(url + ": " + L.T("la pagina non contiene testo (forse lo crea con JavaScript, che CorbolPad non esegue)", "the page contains no text (it may build it with JavaScript, which CorbolPad does not run)"));
+                        continue;
+                    }
+                    job.Pages.Add(p);
+                    sb.Append("\n<document name=\"").Append(p.Title.Replace("\"", "'")).Append("\" source=\"").Append(p.Url.Replace("\"", "%22")).Append("\">\n")
+                      .Append(p.Text).Append("\n</document>\n");
+                    ChatNote(job, L.F("(letta la pagina «{0}»: {1} caratteri)", "(read the page “{0}”: {1} characters)", p.Title, Util.N(p.Text.Length)));
+                }
+                catch (OperationCanceledException) { fail = new AiResult { Cancelled = true }; return null; }
+                catch (Exception ex)
+                {
+                    if (job.Cts.IsCancellationRequested) { fail = new AiResult { Cancelled = true }; return null; }
+                    errors.Add(url + ": " + ex.Message);
+                }
+            }
+            foreach (var e in errors)
+            {
+                ChatNote(job, L.F("(pagina non letta: {0})", "(page not read: {0})", e));
+                sb.Append("\n(The page ").Append(e).Append(" — it could not be downloaded.)\n");
+            }
+            try { BeginInvoke(new Action(delegate { if (aiChat == job) ShowAiStatus(L.F("{0} sta rispondendo… Esc per fermare", "{0} is answering… Press Esc to stop", job.Provider.Name)); })); } catch { }
+            if (job.Pages.Count == 0)
+                fail = new AiResult { Error = errors.Count == 1 ? L.F("Non ho potuto leggere la pagina: {0}", "Could not read the page: {0}", errors[0])
+                                                                : L.T("Non ho potuto leggere nessuna pagina.", "Could not read any page.") };
+            return sb.ToString();
+        }
+
+        // Le pagine vanno nell'ultimo messaggio, tra le schede e la domanda
+        static void InsertBeforeQuestion(AiRequest req, string user, string q, string docs)
+        {
+            string head = user.Substring(0, user.Length - q.Length);
+            req.Messages[req.Messages.Count - 1] = new AiMessage("user", head + docs + "\n" + q);
+        }
+
+        // Solo da portare nell'editor ("trascrivi https://…" o l'indirizzo da solo): niente assistente, il testo va in schede nuove
+        void CopyPages(string q, List<string> urls)
+        {
+            var job = new ChatJob { Question = q, Urls = urls };
+            aiChat = job;
+            aiInput.Clear();
+            AppendChat((aiLog.TextLength > 0 ? "\n\n" : "") + L.T("Tu", "You") + "\n", ChatColor.Accent, true);
+            AppendChat(q.Replace("\r\n", "\n") + "\n", ChatColor.Normal, false);
+            UpdateChatButtons();
+            var th = new Thread(delegate ()
+            {
+                var pages = new List<WebPage>();
+                var errors = new List<string>();
+                bool stopped = false;
+                foreach (var url in urls)
+                {
+                    try { BeginInvoke(new Action(delegate { if (aiChat == job) ShowAiStatus(L.F("Lettura di {0}… Esc per fermare", "Reading {0}… Press Esc to stop", url)); })); } catch { }
+                    try
+                    {
+                        var p = WebPage.Fetch(url, job.Cts.Token);
+                        if (p.Text.Trim().Length == 0) errors.Add(url + ": " + L.T("la pagina non contiene testo (forse lo crea con JavaScript, che CorbolPad non esegue)", "the page contains no text (it may build it with JavaScript, which CorbolPad does not run)"));
+                        else pages.Add(p);
+                    }
+                    catch (Exception ex)
+                    {
+                        if (job.Cts.IsCancellationRequested) { stopped = true; break; }
+                        errors.Add(url + ": " + ex.Message);
+                    }
+                }
+                try
+                {
+                    BeginInvoke(new Action(delegate
+                    {
+                        if (aiChat != job) return;
+                        aiChat = null;
+                        ShowAiStatus(null);
+                        foreach (var p in pages)
+                        {
+                            OpenPageInTab(p);
+                            AppendChat(L.F("(pagina «{0}» aperta in una scheda nuova: {1} caratteri)", "(page “{0}” opened in a new tab: {1} characters)", p.Title, Util.N(p.Text.Length)) + "\n", ChatColor.Dim, false);
+                        }
+                        foreach (var e in errors) AppendChat(L.F("Pagina non letta: {0}", "Page not read: {0}", e) + "\n", ChatColor.Error, false);
+                        if (stopped) AppendChat(L.T("(fermato)", "(stopped)") + "\n", ChatColor.Dim, false);
+                        if (pages.Count > 0) aiLastPages = pages;
+                        UpdateChatButtons();
+                        if (pages.Count == 0 && aiPanel.Visible) aiInput.Focus();
+                    }));
+                }
+                catch { }
+            });
+            th.IsBackground = true;
+            th.Name = "CorbolPad web page";
+            th.Start();
+        }
+
+        // Il testo della pagina in una scheda nuova, chiamata con il titolo della pagina; l'indirizzo in prima riga
+        void OpenPageInTab(WebPage p)
+        {
+            var d = new Doc { UntitledNo = NextUntitled(), Name = WebPage.TabName(p.Title) };
+            int i = active != null ? Docs.IndexOf(active) + 1 : Docs.Count;
+            Docs.Insert(Math.Max(0, Math.Min(i, Docs.Count)), d);
+            EnsureEditor(d);
+            Activate(d);
+            var ed = Ed;
+            if (ed == null || active != d) return;
+            string eol = d.Eol == Sci.SC_EOL_CRLF ? "\r\n" : d.Eol == Sci.SC_EOL_CR ? "\r" : "\n";
+            string text = (p.Url + "\n\n" + p.Text + "\n").Replace("\r\n", "\n").Replace('\r', '\n');
+            if (eol != "\n") text = text.Replace("\n", eol);
+            ed.SendStr(Sci.SCI_INSERTTEXT, 0, text);
+            ed.Send(Sci.SCI_GOTOPOS, 0);
+            UpdateStatus();
         }
 
         void StopChat()
