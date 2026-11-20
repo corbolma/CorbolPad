@@ -196,7 +196,7 @@ namespace CorbolPad
             job.WasReadOnly = ed.ReadOnly;
             ed.ReadOnly = true;
             aiJob = job;
-            ShowAiStatus(L.F("{0} sta scrivendo… Esc per fermare", "{0} is writing… Press Esc to stop", provider.Name));
+            ShowAiStatus(L.F("{0} sta scrivendo… Esc per fermare", "{0} is writing… Press Esc to stop", ClaudeCodeProvider.DisplayNameOf(provider)));
 
             var local = provider as LocalAi;
             Action<string> onStatus = st => { if (st != null) try { BeginInvoke(new Action(delegate { if (aiJob == job) ShowAiStatus(st + " " + L.T("Esc per fermare", "Esc to stop")); })); } catch { } };

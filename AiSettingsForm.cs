@@ -22,7 +22,7 @@ namespace CorbolPad
         {
             "ai.enabled", "ai.provider",
             "ai.claude.key", "ai.claude.model", "ai.claude.effort",
-            "ai.claudecode.model",
+            "ai.claudecode.model", "ai.claudecode.config",
             "ai.openai.url", "ai.openai.key", "ai.openai.model",
             "ai.local.model", "ai.local.variant", "ai.local.crashes"
         };
@@ -38,7 +38,7 @@ namespace CorbolPad
         CheckBox chkOn;
         RadioButton rLocal, rClaude, rClaudeCode, rOpenAi, rCpu, rGpu;
         GroupBox gLocal, gClaude, gClaudeCode, gOpenAi;
-        ComboBox cbModel, cbClaudeModel, cbEffort, cbCcModel, cbUrl, cbOaModel;
+        ComboBox cbModel, cbClaudeModel, cbEffort, cbCcModel, cbCcAccount, cbUrl, cbOaModel;
         Label lblModelNote, lblLocalState, lblTest;
         ProgressBar bar;
         Button btnDownload, btnRemove, btnList, btnTest, btnSpeed;
@@ -261,6 +261,15 @@ namespace CorbolPad
             cbCcModel.Items.Add(new Item("", L.T("Predefinito di Claude Code", "Claude Code default")));
             foreach (var m in ClaudeCodeProvider.Models) cbCcModel.Items.Add(new Item(m, m));
             Row(t, L.T("Mo&dello:", "Mo&del:"), cbCcModel);
+            // account: uno per ogni login di Claude Code (ognuno nella sua cartella di configurazione)
+            cbCcAccount = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Width = InputWidth };
+            cbCcAccount.DropDown += delegate { FillAccounts(SelectedAccount()); };   // dopo il login nella finestra compare l'email
+            Row(t, L.T("Acco&unt:", "Acco&unt:"), cbCcAccount);
+            var btnAddAcc = new Button { Text = L.T("Aggiungi…", "Add…"), AutoSize = true, MinimumSize = new Size(88, 26) };
+            var btnLogin = new Button { Text = L.T("Accedi di nuovo…", "Log in again…"), AutoSize = true, MinimumSize = new Size(88, 26) };
+            btnAddAcc.Click += delegate { AddAccount(); };
+            btnLogin.Click += delegate { LoginAgain(); };
+            Row(t, null, Line(btnAddAcc, btnLogin));
             Row(t, null, Note(L.T("CorbolPad avvia Claude Code senza strumenti (non può leggere file né eseguire comandi) e senza salvare la sessione: riceve solo il testo su cui lavora l'assistente, che viene inviato ad Anthropic. L'uso rientra nei limiti del tuo abbonamento.",
                                   "CorbolPad runs Claude Code without tools (it cannot read files or run commands) and without saving the session: it only receives the text the assistant works on, which is sent to Anthropic. Usage counts toward your subscription limits.")));
             root.Controls.Add(gClaudeCode);
@@ -323,6 +332,7 @@ namespace CorbolPad
             int ci = cbCcModel.Items.Cast<Item>().ToList().FindIndex(i => i.Id == ccm);
             if (ci < 0) { cbCcModel.Items.Add(new Item(ccm, ccm)); ci = cbCcModel.Items.Count - 1; }   // nome completo scritto a mano in settings.txt
             cbCcModel.SelectedIndex = ci;
+            FillAccounts(AiSettings.ClaudeCodeConfig);
 
             cbUrl.Text = AiSettings.OpenAiUrl;
             txOaKey.Text = AiSettings.OpenAiKey;
@@ -348,6 +358,7 @@ namespace CorbolPad
             var cc = cbCcModel.SelectedItem as Item;
             string ccModel = cc != null ? cc.Id : "";
             if (AiSettings.ClaudeCodeModel != ccModel) AiSettings.ClaudeCodeModel = ccModel;
+            if (AiSettings.ClaudeCodeConfig != SelectedAccount()) AiSettings.ClaudeCodeConfig = SelectedAccount();
             if (AiSettings.OpenAiUrl != cbUrl.Text.Trim()) AiSettings.OpenAiUrl = cbUrl.Text.Trim();
             if (AiSettings.OpenAiKey != txOaKey.Text.Trim()) AiSettings.OpenAiKey = txOaKey.Text.Trim();
             if (AiSettings.OpenAiModel != cbOaModel.Text.Trim()) AiSettings.OpenAiModel = cbOaModel.Text.Trim();
@@ -717,6 +728,67 @@ namespace CorbolPad
             });
             th.IsBackground = true;
             th.Start();
+        }
+
+        // ---- Account di Claude Code ----
+
+        string SelectedAccount()
+        {
+            var it = cbCcAccount.SelectedItem as Item;
+            return it != null ? it.Id : "";
+        }
+
+        void FillAccounts(string select)
+        {
+            cbCcAccount.Items.Clear();
+            foreach (var a in ClaudeCodeProvider.Accounts()) cbCcAccount.Items.Add(new Item(a.Dir, a.Label));
+            int i = cbCcAccount.Items.Cast<Item>().ToList().FindIndex(x => string.Equals(x.Id, select ?? "", StringComparison.OrdinalIgnoreCase));
+            if (i < 0 && !string.IsNullOrEmpty(select))
+            {
+                // cartella salvata che non è più tra quelle trovate: si mostra lo stesso
+                cbCcAccount.Items.Add(new Item(select, select));
+                i = cbCcAccount.Items.Count - 1;
+            }
+            cbCcAccount.SelectedIndex = Math.Max(0, i);
+        }
+
+        // Chiede un nome, crea la cartella e apre Claude Code per il login con l'altro account
+        void AddAccount()
+        {
+            string name = Prompt(L.T("Nome del nuovo account (es. lavoro). Si apre Claude Code in una finestra: fai il login con l'altra utenza, poi chiudi la finestra.",
+                                     "Name of the new account (e.g. work). Claude Code opens in a window: log in with the other account, then close the window."));
+            if (name == null) return;
+            string err;
+            string dir = ClaudeCodeProvider.AddAccount(name, out err);
+            if (dir == null) { ShowTest(err, ErrColor); return; }
+            FillAccounts(dir);
+            ShowTest(L.T("Fai il login nella finestra di Claude Code; poi riapri l'elenco Account per vedere l'email.",
+                         "Log in in the Claude Code window; then reopen the Account list to see the email."), Grey);
+        }
+
+        void LoginAgain()
+        {
+            string exe = ClaudeCodeProvider.FindExe();
+            if (exe == null) { ShowTest(L.T("Claude Code non è installato su questo PC.", "Claude Code is not installed on this PC."), ErrColor); return; }
+            try { ClaudeCodeProvider.OpenLogin(exe, SelectedAccount()); }
+            catch (Exception ex) { ShowTest(ex.Message, ErrColor); return; }
+            ShowTest(L.T("Nella finestra di Claude Code scrivi /login ed entra con l'utenza giusta, poi riapri l'elenco Account.",
+                         "In the Claude Code window type /login and sign in with the right account, then reopen the Account list."), Grey);
+        }
+
+        string Prompt(string text)
+        {
+            using (var f = new Form { Text = Text, FormBorderStyle = FormBorderStyle.FixedDialog, MaximizeBox = false, MinimizeBox = false, ShowInTaskbar = false,
+                                      StartPosition = FormStartPosition.CenterParent, Font = Font, AutoScaleDimensions = new SizeF(96f, 96f), AutoScaleMode = AutoScaleMode.Dpi, ClientSize = new Size(400, 150) })
+            {
+                var lbl = new Label { Text = text, AutoSize = false, Location = new Point(12, 10), Size = new Size(376, 54) };
+                var txt = new TextBox { Location = new Point(12, 70), Width = 376 };
+                var ok = new Button { Text = "OK", DialogResult = DialogResult.OK, Location = new Point(196, 108), Size = new Size(92, 28) };
+                var cancel = new Button { Text = L.T("Annulla", "Cancel"), DialogResult = DialogResult.Cancel, Location = new Point(296, 108), Size = new Size(92, 28) };
+                f.Controls.AddRange(new Control[] { lbl, txt, ok, cancel });
+                f.AcceptButton = ok; f.CancelButton = cancel;
+                return f.ShowDialog(this) == DialogResult.OK ? txt.Text : null;
+            }
         }
 
         void ShowTest(string text, Color c)

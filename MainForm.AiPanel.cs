@@ -241,7 +241,7 @@ namespace CorbolPad
         {
             string why;
             var p = AiProvider(out why);
-            return p != null ? p.Name : "";
+            return p != null ? ClaudeCodeProvider.DisplayNameOf(p) : "";
         }
 
         // ---- Conversazione ----
@@ -431,7 +431,7 @@ namespace CorbolPad
             aiChat = job;
             aiLastPages = null;
             aiInput.Clear();
-            aiTitle.Text = L.T("Assistente", "Assistant") + " · " + provider.Name;
+            aiTitle.Text = L.T("Assistente", "Assistant") + " · " + ClaudeCodeProvider.DisplayNameOf(provider);
             AppendChat((aiLog.TextLength > 0 ? "\n\n" : "") + L.T("Tu", "You") + "\n", ChatColor.Accent, true);
             AppendChat(q.Replace("\r\n", "\n") + "\n", ChatColor.Normal, false);
             if (note != null) AppendChat(note + "\n", ChatColor.Dim, false);
@@ -441,7 +441,7 @@ namespace CorbolPad
             var local = provider as LocalAi;
             Action<string> onStatus = st => { if (st != null) try { BeginInvoke(new Action(delegate { if (aiChat == job && !job.SeenText) ShowAiStatus(st); })); } catch { } };
             if (local != null) local.StatusChanged += onStatus;
-            ShowAiStatus(L.F("{0} sta rispondendo… Esc per fermare", "{0} is answering… Press Esc to stop", provider.Name));
+            ShowAiStatus(L.F("{0} sta rispondendo… Esc per fermare", "{0} is answering… Press Esc to stop", ClaudeCodeProvider.DisplayNameOf(provider)));
 
             var th = new Thread(delegate ()
             {
