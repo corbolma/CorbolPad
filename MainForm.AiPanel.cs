@@ -33,6 +33,7 @@ namespace CorbolPad
         readonly Panel aiPanel = new Panel();
         readonly Splitter aiSplit = new Splitter();
         readonly Label aiTitle = new Label();
+        readonly Label aiService = new Label();   // servizio e account accanto al titolo, in carattere normale
         readonly RichTextBox aiLog = new RichTextBox();
         readonly TextBox aiInput = new TextBox();
         readonly ComboBox aiContext = new ComboBox();
@@ -71,13 +72,27 @@ namespace CorbolPad
             var head = new TableLayoutPanel { Dock = DockStyle.Top, ColumnCount = 4, RowCount = 1, AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, Margin = new Padding(0) };
             head.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
             for (int i = 0; i < 3; i++) head.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
-            aiTitle.AutoSize = true; aiTitle.Anchor = AnchorStyles.Left; aiTitle.AutoEllipsis = true;
+            aiTitle.AutoSize = true; aiTitle.Anchor = AnchorStyles.Left;
             aiTitle.Font = new Font(Font.FontFamily, Font.Size, FontStyle.Bold);
+            aiTitle.Text = L.T("Assistente", "Assistant");
+            aiService.AutoSize = false; aiService.AutoEllipsis = true;
+            // ancorata a sinistra e a destra: la tabella la centra in verticale come il titolo e le dà la larghezza che resta
+            aiService.Anchor = AnchorStyles.Left | AnchorStyles.Right;
+            aiService.Height = aiTitle.PreferredHeight;
+            aiService.TextAlign = ContentAlignment.MiddleLeft;
+            aiService.Margin = new Padding(0, aiTitle.Margin.Top, S(4), aiTitle.Margin.Bottom);
+            // solo "Assistente" in grassetto; il servizio prende lo spazio che resta e si accorcia con "…"
+            var titleRow = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 2, RowCount = 1, AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, Margin = new Padding(0) };
+            titleRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+            titleRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+            titleRow.RowStyles.Add(new RowStyle(SizeType.Percent, 100));   // titolo e servizio centrati sulla stessa riga dei pulsanti
+            titleRow.Controls.Add(aiTitle, 0, 0);
+            titleRow.Controls.Add(aiService, 1, 0);
             SetupFlat(aiNew, L.T("Nuova", "New"), L.T("Nuova conversazione", "New conversation"));
             SetupFlat(aiDockBtn, "", "");
             SetupFlat(aiClose, "×", L.T("Chiudi il pannello (Esc)", "Close the panel (Esc)"));
             aiClose.MinimumSize = new Size(S(28), S(26));
-            head.Controls.Add(aiTitle, 0, 0);
+            head.Controls.Add(titleRow, 0, 0);
             head.Controls.Add(aiNew, 1, 0);
             head.Controls.Add(aiDockBtn, 2, 0);
             head.Controls.Add(aiClose, 3, 0);
@@ -203,6 +218,7 @@ namespace CorbolPad
         {
             aiPanel.BackColor = t.Chrome;
             aiTitle.ForeColor = aiContextLbl.ForeColor = t.ChromeText;
+            aiService.ForeColor = t.ChromeTextDim;
             aiLog.BackColor = t.EditorBack;
             aiLog.ForeColor = t.EditorFore;
             aiLog.Parent.BackColor = t.EditorBack;
@@ -218,7 +234,8 @@ namespace CorbolPad
         void ShowAiPanel()
         {
             string why;
-            aiTitle.Text = AiProvider(out why) != null ? L.T("Assistente", "Assistant") + " · " + AiProviderName() : L.T("Assistente", "Assistant");
+            aiTitle.Text = L.T("Assistente", "Assistant");   // anche dopo un cambio di lingua
+            SetService(AiProvider(out why) != null ? AiProviderName() : null);
             aiPanel.Visible = aiSplit.Visible = true;
             aiInput.Focus();
             aiInput.SelectAll();
@@ -235,6 +252,13 @@ namespace CorbolPad
         {
             aiPanel.Visible = aiSplit.Visible = false;
             if (Ed != null) Ed.Focus();
+        }
+
+        // Servizio (e account) accanto al titolo; per intero nel suggerimento, se non ci sta
+        void SetService(string name)
+        {
+            aiService.Text = string.IsNullOrEmpty(name) ? "" : "· " + name;
+            tips.SetToolTip(aiService, name);
         }
 
         string AiProviderName()
@@ -431,7 +455,7 @@ namespace CorbolPad
             aiChat = job;
             aiLastPages = null;
             aiInput.Clear();
-            aiTitle.Text = L.T("Assistente", "Assistant") + " · " + ClaudeCodeProvider.DisplayNameOf(provider);
+            SetService(ClaudeCodeProvider.DisplayNameOf(provider));
             AppendChat((aiLog.TextLength > 0 ? "\n\n" : "") + L.T("Tu", "You") + "\n", ChatColor.Accent, true);
             AppendChat(q.Replace("\r\n", "\n") + "\n", ChatColor.Normal, false);
             if (note != null) AppendChat(note + "\n", ChatColor.Dim, false);
