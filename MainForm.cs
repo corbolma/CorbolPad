@@ -271,6 +271,7 @@ namespace CorbolPad
                 new ToolStripSeparator(),
                 Mi(L.T("Apri la cartella del file", "Open containing folder"), Keys.None, delegate { if (active != null && active.Path != null) Util.SelectInExplorer(active.Path); }),
                 Mi(L.T("Copia percorso", "Copy path"), Keys.None, delegate { CopyPath(active); }),
+                Corbol.Link.OpenInMenu(() => active != null && active.Path != null ? new[] { active.Path } : null),
                 new ToolStripSeparator(),
                 Mi(L.T("&Esci", "E&xit"), Keys.None, Close, "Alt+F4")
             });
@@ -880,6 +881,49 @@ namespace CorbolPad
             return n;
         }
 
+        // Comandi dalle altre app Corbol: aprire file, aprire un testo in una scheda nuova
+        void StartLink()
+        {
+            Corbol.Link.Handle("open", delegate (List<string> a)
+            {
+                Front();
+                var files = a.Where(x => x.Length > 0).Select(x => Path.GetFullPath(x)).ToList();
+                if (files.Count > 0) OpenFiles(files);
+                return "ok";
+            });
+            Corbol.Link.Handle("text", delegate (List<string> a)
+            {
+                Front();
+                string title = a.Count > 1 ? a[0] : null, text = a.Count > 0 ? a[a.Count - 1] : "";
+                NewTextTab(title, text);
+                return "ok";
+            });
+            Corbol.Link.Ready();
+        }
+
+        void Front()
+        {
+            if (WindowState == FormWindowState.Minimized) WindowState = FormWindowState.Normal;
+            Activate();
+        }
+
+        void NewTextTab(string title, string text)
+        {
+            var d = new Doc { UntitledNo = NextUntitled(), Name = string.IsNullOrWhiteSpace(title) ? null : title.Trim() };
+            int i = active != null ? Docs.IndexOf(active) + 1 : Docs.Count;
+            Docs.Insert(Math.Max(0, Math.Min(i, Docs.Count)), d);
+            EnsureEditor(d);
+            Activate(d);
+            var ed = Ed;
+            if (ed == null || active != d) return;
+            string eol = d.Eol == Sci.SC_EOL_CRLF ? "\r\n" : d.Eol == Sci.SC_EOL_CR ? "\r" : "\n";
+            string t = (text ?? "").Replace("\r\n", "\n").Replace('\r', '\n');
+            if (eol != "\n") t = t.Replace("\n", eol);
+            ed.SendStr(Sci.SCI_INSERTTEXT, 0, t);
+            ed.Send(Sci.SCI_GOTOPOS, 0);
+            UpdateStatus();
+        }
+
         void NewDoc()
         {
             var d = new Doc { UntitledNo = NextUntitled() };
@@ -1481,6 +1525,7 @@ namespace CorbolPad
 
             if (primary)
             {
+                StartLink();
                 SingleInstance.Listen(files =>
                 {
                     try

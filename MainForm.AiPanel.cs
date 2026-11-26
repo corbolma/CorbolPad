@@ -446,7 +446,7 @@ namespace CorbolPad
                 budget -= len;
                 history.InsertRange(0, new[] { aiHistory[i], aiHistory[i + 1] });
             }
-            var req = new AiRequest { System = ChatSystem };
+            var req = new AiRequest { System = ChatSystem + Corbol.Link.AiPrompt() };
             req.Messages.AddRange(history);
             req.Messages.Add(new AiMessage("user", user));
 
@@ -998,6 +998,10 @@ namespace CorbolPad
             aiChatTimer.Stop();
             ShowAiStatus(null);
             string answer = job.Answer.ToString().TrimEnd();
+            // comandi per le altre app Corbol: via dal testo (e dalla chat, dove sono già comparsi)
+            var acts = Corbol.Link.TakeActions(answer, out answer);
+            Corbol.Link.StripFrom(aiLog, acts);
+            if (answer.Length == 0 && acts.Count > 0) answer = "(" + L.T("comando per un'altra app Corbol", "command for another Corbol app") + ")";
             if (job.Pages.Count > 0) aiLastPages = job.Pages.ToList();
             if (res.Ok && answer.Length > 0)
             {
@@ -1005,8 +1009,12 @@ namespace CorbolPad
                 string asked = job.Question;
                 foreach (var p in job.Pages) asked += "\n(The web page \"" + p.Title + "\" <" + p.Url + "> was read to answer this.)";
                 aiHistory.Add(new AiMessage("user", asked));
-                aiHistory.Add(new AiMessage("assistant", answer));
+                var said = new AiMessage("assistant", answer);
+                aiHistory.Add(said);
                 aiLastAnswer = answer;
+                Corbol.Link.RunActions(this, acts,
+                    (a, txt, ok) => AppendChat("\n" + Corbol.Link.Note(a, txt, ok) + "\n", ok ? ChatColor.Dim : ChatColor.Error, false),
+                    sum => { said.Text += sum == null ? "\n[the user did not allow the commands for the other apps]" : "\n[results of the commands for the other apps]\n" + sum; });
                 if (res.Truncated) AppendChat("\n" + L.T("(risposta interrotta perché troppo lunga)", "(answer cut off because it was too long)"), ChatColor.Dim, false);
             }
             else if (res.Cancelled) AppendChat((answer.Length > 0 ? "\n" : "") + L.T("(fermato)", "(stopped)"), ChatColor.Dim, false);

@@ -239,6 +239,7 @@ The selected text is too long for {0}: {1} characters at most. Select a smaller 
 (the tab “{0}” is too long for {1}: read only the part around the cursor, lines {2}–{3} of {4}. For another part, select it or move the cursor there) = 
 (none of these words is in the text: {0}) = 
 (for a question about the whole text use Assistant > Summarize or Explain, which also read long texts) = 
+command for another Corbol app = 
 (answer cut off because it was too long) = 
 (stopped) = 
 Reading {0}… Press Esc to stop = 

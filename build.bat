@@ -18,7 +18,7 @@ for %%F in (lang\*.txt) do if /i not "%%~nF"=="_template" call set LANGRES=%%LAN
 "%CSC%" /nologo /codepage:65001 /target:winexe /platform:x64 /unsafe /optimize+ /out:CorbolPad.exe ^
   /win32icon:corbolpad.ico /resource:corbolpad.ico,CorbolPad.corbolpad.ico /resource:scintilla\Scintilla.dll,CorbolPad.Scintilla.dll ^
   /r:System.Windows.Forms.dll /r:System.Drawing.dll /r:System.Core.dll /r:System.IO.Compression.dll /r:System.IO.Compression.FileSystem.dll /r:System.Web.Extensions.dll /r:System.Security.dll ^
-  CorbolPad.cs MainForm.cs TabStrip.cs Document.cs Scintilla.cs Version.cs Lang.cs OldApp.cs AiDownloader.cs AiProviders.cs ClaudeCode.cs LocalAi.cs AiActions.cs AiSettingsForm.cs Updater.cs MainForm.Ai.cs MainForm.AiPanel.cs WebPage.cs %LANGRES%
+  CorbolPad.cs MainForm.cs TabStrip.cs Document.cs Scintilla.cs Version.cs Lang.cs OldApp.cs AiDownloader.cs AiProviders.cs ClaudeCode.cs LocalAi.cs AiActions.cs AiSettingsForm.cs Updater.cs MainForm.Ai.cs MainForm.AiPanel.cs WebPage.cs CorbolLink.cs %LANGRES%
 if errorlevel 1 (
   echo Compilazione fallita.
   exit /b 1

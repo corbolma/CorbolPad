@@ -50,6 +50,7 @@ namespace CorbolPad
             bool primary;
             var mutex = new Mutex(true, "CorbolPad.Instance." + Environment.UserName, out primary);
             if (!primary && SingleInstance.Send(files)) return;
+            if (primary) Corbol.Link.Start("CorbolPad", L.T);   // comandi dalle altre app Corbol (CorbolLink.cs)
 
             try { SciLib.Load(); }
             catch (Exception ex)
